@@ -19,7 +19,11 @@ import {
   Share2,
   Activity,
   Timer,
-  Film
+  Heart,
+  Flame,
+  Watch,
+  RefreshCw,
+  Sliders
 } from 'lucide-react';
 
 // --- BAZA DANYCH PLANU TRENINGOWEGO ---
@@ -1036,7 +1040,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
           kneeFront: { x: lerp(176, 158, t), y: lerp(144, 118, t) },
           ankleFront: { x: lerp(212, 178, t), y: 152 },
           kneeBack: { x: lerp(174, 156, t), y: lerp(144, 118, t) },
-          ankleBack: { x: lerp(210, 176, t), y: 152 },
+          ankleBack: { x: 210, y: 176, t), y: 152 },
           elbow: { x: 108, y: 186 },
           wrist: { x: 132, y: 188 },
           phaseLabel: 'Biodra wysoko'
@@ -1065,7 +1069,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
           kneeFront: { x: 178, y: 162 + lift },
           ankleFront: { x: 210, y: 172 },
           kneeBack: { x: 178, y: lerp(186, 166, t) },
-          ankleBack: { x: 210, y: lerp(194, 176, t) },
+          ankleBack: { x: 210, y: 176, t), y: 176 },
           elbow: { x: 88, y: 188 },
           wrist: { x: 112, y: 190 },
           phaseLabel: 'Izometria'
@@ -1311,1812 +1315,236 @@ function AnatomicalExerciseAnimator({ exercise }) {
   );
 }
 
-// --- PODWÓJNA BAZA DANYCH (INDEXED-DB + LOCALSTORAGE) GWARANTUJĄCA ZAPIS PO ZAMKNIĘCIU KARTY NA IPHONIE ---
-const DB_NAME = 'HyroxAsiaVideoDB_v3';
-const VIDEO_STORE = 'exercise_videos';
-const STATE_STORE = 'app_state';
+// --- KOMPONENT INTEGRACJI ZE STRAVA API ---
+function StravaGarminSection({ selectedWeek, selectedWorkout, logs, setLogs }) {
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [stravaToken, setStravaToken] = useState(() => localStorage.getItem('strava_access_token') || '');
+  const [stravaClientId, setStravaClientId] = useState(() => localStorage.getItem('strava_client_id') || '');
+  const [stravaClientSecret, setStravaClientSecret] = useState(() => localStorage.getItem('strava_client_secret') || '');
 
-const openAppDB = () => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 2);
-    request.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(VIDEO_STORE)) {
-        db.createObjectStore(VIDEO_STORE, { keyPath: 'key' });
-      }
-      if (!db.objectStoreNames.contains(STATE_STORE)) {
-        db.createObjectStore(STATE_STORE, { keyPath: 'id' });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-};
-
-// Zapis pełnego stanu treningów także do IndexedDB (odporny na zamknięcie karty ze skrótu ekranu głównego)
-const saveStateToIDB = async (stateObj) => {
-  try {
-    const db = await openAppDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STATE_STORE, 'readwrite');
-      tx.objectStore(STATE_STORE).put({ id: 'main_backup', ...stateObj, updatedAt: Date.now() });
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => resolve(false);
-    });
-  } catch {
-    return false;
-  }
-};
-
-const loadStateFromIDB = async () => {
-  try {
-    const db = await openAppDB();
-    return new Promise((resolve) => {
-      const tx = db.transaction(STATE_STORE, 'readonly');
-      const req = tx.objectStore(STATE_STORE).get('main_backup');
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => resolve(null);
-    });
-  } catch {
-    return null;
-  }
-};
-
-const saveVideoBlobToDB = async (key, file, meta = {}) => {
-  const db = await openAppDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(VIDEO_STORE, 'readwrite');
-    tx.objectStore(VIDEO_STORE).put({
-      key,
-      blob: file,
-      name: file.name || 'nagranie.mp4',
-      updatedAt: new Date().toISOString(),
-      ...meta
-    });
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-  });
-};
-
-const getAllVideosFromDB = async () => {
-  const db = await openAppDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(VIDEO_STORE, 'readonly');
-    const req = tx.objectStore(VIDEO_STORE).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error);
-  });
-};
-
-const deleteVideoFromDB = async (key) => {
-  const db = await openAppDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(VIDEO_STORE, 'readwrite');
-    tx.objectStore(VIDEO_STORE).delete(key);
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-  });
-};
-
-const calculatePlates = (totalWeight, barWeight = 20) => {
-  const weightNum = parseFloat(totalWeight);
-  if (isNaN(weightNum) || weightNum <= barWeight) return [];
-  let perSide = (weightNum - barWeight) / 2;
-  const availablePlates = [20, 15, 10, 5, 2.5, 1.25];
-  const result = [];
-  for (const plate of availablePlates) {
-    while (perSide >= plate - 0.001) {
-      result.push(plate);
-      perSide = Math.round((perSide - plate) * 100) / 100;
-    }
-  }
-  return result;
-};
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('workout');
-  const [selectedWeek, setSelectedWeek] = useState(() => {
-    const saved = localStorage.getItem('hyrox_selected_week');
-    return saved ? Number(saved) : 1;
-  });
-  const [selectedWorkout, setSelectedWorkout] = useState(() => {
-    const saved = localStorage.getItem('hyrox_selected_workout');
-    return saved ? Number(saved) : 1;
-  });
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [wakeLockActive, setWakeLockActive] = useState(false);
-
-  const [logs, setLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('hyrox_asia_logs_v3');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const [finisherLogs, setFinisherLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('hyrox_asia_finishers_v3');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const [openDemos, setOpenDemos] = useState({});
-  const [openPlateCalc, setOpenPlateCalc] = useState({});
-  const [localVideos, setLocalVideos] = useState({});
-  const [showBackupModal, setShowBackupModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [copiedReport, setCopiedReport] = useState(false);
-
-  const [bottomTimer, setBottomTimer] = useState({
-    active: false,
-    paused: false,
-    mode: 'REST',
-    remaining: 0,
-    total: 0,
-    endTime: 0,
-    label: '',
-    nextRest: 0
-  });
-
-  const [finisherTimer, setFinisherTimer] = useState({
-    active: false,
-    seconds: 0,
-    mode: 'EMOM',
-    totalSeconds: 300,
-    startTime: 0
-  });
-
-  const wakeLockRef = useRef(null);
-  const lastBeepSecRef = useRef(-1);
-  const lastFinisherBeepRef = useRef(-1);
-  const latestStateRef = useRef({ logs, finisherLogs, selectedWeek, selectedWorkout });
-
-  // Aktualizacja referencji do natychmiastowego zapisu przy zamykaniu karty na iPhonie
-  useEffect(() => {
-    latestStateRef.current = { logs, finisherLogs, selectedWeek, selectedWorkout };
-  }, [logs, finisherLogs, selectedWeek, selectedWorkout]);
-
-  // Prośba do systemu iOS/Safari o trwałą pamięć (nieusuwalną po zamknięciu ze skrótu) + odzyskiwanie z IndexedDB
-  useEffect(() => {
-    if (navigator.storage && navigator.storage.persist) {
-      navigator.storage.persist().catch(() => {});
-    }
-
-    // Jeśli localStorage byłby pusty po otwarciu skrótu, przywróć automatycznie z IndexedDB
-    loadStateFromIDB().then((idbData) => {
-      if (!idbData) return;
-      setLogs((currLogs) => {
-        if (Object.keys(currLogs).length === 0 && idbData.logs && Object.keys(idbData.logs).length > 0) {
-          localStorage.setItem('hyrox_asia_logs_v3', JSON.stringify(idbData.logs));
-          return idbData.logs;
-        }
-        return currLogs;
-      });
-      setFinisherLogs((currFin) => {
-        if (Object.keys(currFin).length === 0 && idbData.finisherLogs && Object.keys(idbData.finisherLogs).length > 0) {
-          localStorage.setItem('hyrox_asia_finishers_v3', JSON.stringify(idbData.finisherLogs));
-          return idbData.finisherLogs;
-        }
-        return currFin;
-      });
-    });
-
-    // Wymuś zapis w ułamku sekundy, gdy użytkownik wyrzuca kartę z ostatnich aplikacji na telefonie
-    const flushSaveOnClose = () => {
-      const { logs: l, finisherLogs: f, selectedWeek: w, selectedWorkout: wo } = latestStateRef.current;
-      try {
-        localStorage.setItem('hyrox_asia_logs_v3', JSON.stringify(l));
-        localStorage.setItem('hyrox_asia_finishers_v3', JSON.stringify(f));
-        localStorage.setItem('hyrox_selected_week', String(w));
-        localStorage.setItem('hyrox_selected_workout', String(wo));
-        saveStateToIDB({ logs: l, finisherLogs: f, selectedWeek: w, selectedWorkout: wo });
-      } catch {
-        // ignore
-      }
-    };
-
-    window.addEventListener('pagehide', flushSaveOnClose);
-    window.addEventListener('beforeunload', flushSaveOnClose);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flushSaveOnClose();
-    });
-
-    return () => {
-      window.removeEventListener('pagehide', flushSaveOnClose);
-      window.removeEventListener('beforeunload', flushSaveOnClose);
-    };
-  }, []);
-
-  // Bieżący zapis przy każdej zmianie (localStorage + IndexedDB)
-  useEffect(() => {
-    try {
-      localStorage.setItem('hyrox_asia_logs_v3', JSON.stringify(logs));
-      localStorage.setItem('hyrox_asia_finishers_v3', JSON.stringify(finisherLogs));
-      localStorage.setItem('hyrox_selected_week', String(selectedWeek));
-      localStorage.setItem('hyrox_selected_workout', String(selectedWorkout));
-      saveStateToIDB({ logs, finisherLogs, selectedWeek, selectedWorkout });
-    } catch (e) {
-      console.error(e);
-    }
-  }, [logs, finisherLogs, selectedWeek, selectedWorkout]);
-
-  const refreshVideosFromDB = async () => {
-    try {
-      const items = await getAllVideosFromDB();
-      const map = {};
-      items.forEach((item) => {
-        map[item.key] = {
-          ...item,
-          url: URL.createObjectURL(item.blob)
-        };
-      });
-      setLocalVideos(map);
-    } catch (e) {
-      console.error(e);
-    }
+  // Dane zegarka dla tego konkretnego treningu
+  const currentGarminData = logs[selectedWeek]?.[`garmin_w${selectedWorkout}`] || {
+    durationMinutes: '',
+    avgHr: '',
+    maxHr: '',
+    calories: '',
+    activityName: '',
+    syncedAt: null
   };
 
-  useEffect(() => {
-    refreshVideosFromDB();
-  }, []);
-
-  const toggleWakeLock = async () => {
-    if (!('wakeLock' in navigator)) {
-      alert('Brak wsparcia blokady ekranu w tej przeglądarce.');
-      return;
-    }
-    try {
-      if (wakeLockRef.current) {
-        await wakeLockRef.current.release();
-        wakeLockRef.current = null;
-        setWakeLockActive(false);
-      } else {
-        wakeLockRef.current = await navigator.wakeLock.request('screen');
-        setWakeLockActive(true);
-        wakeLockRef.current.addEventListener('release', () => setWakeLockActive(false));
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const playBeep = (freq = 880, duration = 0.18) => {
-    if (!soundEnabled) return;
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0.18, ctx.currentTime);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + duration);
-    } catch {
-      // ignore
-    }
-  };
-
-  const startBottomTimer = (seconds, label, mode = 'REST', nextRest = 0) => {
-    lastBeepSecRef.current = -1;
-    setBottomTimer({
-      active: true,
-      paused: false,
-      mode,
-      remaining: seconds,
-      total: seconds,
-      endTime: Date.now() + seconds * 1000,
-      label,
-      nextRest
-    });
-  };
-
-  const togglePauseBottomTimer = () => {
-    setBottomTimer((prev) => {
-      if (!prev.active) return prev;
-      if (!prev.paused) {
-        return { ...prev, paused: true };
-      } else {
-        return {
-          ...prev,
-          paused: false,
-          endTime: Date.now() + prev.remaining * 1000
-        };
-      }
-    });
-  };
-
-  const adjustBottomTimer = (deltaSec) => {
-    setBottomTimer((prev) => {
-      if (!prev.active) return prev;
-      const nextRem = Math.max(0, prev.remaining + deltaSec);
-      const nextTot = Math.max(prev.total, nextRem);
-      return {
-        ...prev,
-        remaining: nextRem,
-        total: nextTot,
-        endTime: Date.now() + nextRem * 1000
-      };
-    });
-  };
-
-  useEffect(() => {
-    if (!bottomTimer.active || bottomTimer.paused) return;
-
-    const interval = setInterval(() => {
-      const rem = Math.max(0, Math.ceil((bottomTimer.endTime - Date.now()) / 1000));
-
-      if (rem !== lastBeepSecRef.current) {
-        lastBeepSecRef.current = rem;
-        if (rem > 0 && rem <= 3) {
-          playBeep(660, 0.12);
-        }
-      }
-
-      if (rem <= 0) {
-        playBeep(1046, 0.35);
-        if (bottomTimer.mode === 'WORK' && bottomTimer.nextRest > 0) {
-          startBottomTimer(bottomTimer.nextRest, `Przerwa po: ${bottomTimer.label}`, 'REST', 0);
-        } else {
-          setBottomTimer((prev) => ({ ...prev, active: false, remaining: 0 }));
-        }
-      } else {
-        setBottomTimer((prev) => ({ ...prev, remaining: rem }));
-      }
-    }, 250);
-
-    return () => clearInterval(interval);
-  }, [bottomTimer]);
-
-  useEffect(() => {
-    if (!finisherTimer.active) return;
-
-    const interval = setInterval(() => {
-      const elapsed = Math.min(
-        finisherTimer.totalSeconds,
-        Math.floor((Date.now() - finisherTimer.startTime) / 1000)
-      );
-
-      if (elapsed !== lastFinisherBeepRef.current) {
-        lastFinisherBeepRef.current = elapsed;
-        if (finisherTimer.mode === 'EMOM' && elapsed > 0 && elapsed % 60 === 0 && elapsed < finisherTimer.totalSeconds) {
-          playBeep(987, 0.35);
-        } else if (finisherTimer.mode === 'EMOM' && elapsed % 60 >= 57) {
-          playBeep(550, 0.1);
-        }
-      }
-
-      if (elapsed >= finisherTimer.totalSeconds) {
-        playBeep(1046, 0.5);
-        setFinisherTimer((prev) => ({ ...prev, active: false, seconds: prev.totalSeconds }));
-      } else {
-        setFinisherTimer((prev) => ({ ...prev, seconds: elapsed }));
-      }
-    }, 250);
-
-    return () => clearInterval(interval);
-  }, [finisherTimer]);
-
-  const toggleFinisherTimer = (mode, totalSeconds) => {
-    setFinisherTimer((prev) => {
-      if (prev.active) {
-        return { ...prev, active: false };
-      }
-      const alreadyElapsed = prev.seconds >= totalSeconds ? 0 : prev.seconds;
-      lastFinisherBeepRef.current = alreadyElapsed;
-      return {
-        active: true,
-        mode,
-        totalSeconds,
-        seconds: alreadyElapsed,
-        startTime: Date.now() - alreadyElapsed * 1000
-      };
-    });
-  };
-
-  const getExerciseLog = (week, exercise) => {
-    const weekData = logs[week] || {};
-    const existing = weekData[exercise.id];
-    if (existing && existing.sets && existing.sets.length === exercise.sets) {
-      return existing;
-    }
-    const defaultSets = Array.from({ length: exercise.sets }, (_, i) => ({
-      setNumber: i + 1,
-      weight: existing?.sets?.[i]?.weight ?? '',
-      weightRight: existing?.sets?.[i]?.weightRight ?? '',
-      reps: existing?.sets?.[i]?.reps ?? '',
-      repsRight: existing?.sets?.[i]?.repsRight ?? '',
-      rir: existing?.sets?.[i]?.rir ?? '2',
-      done: existing?.sets?.[i]?.done ?? false
-    }));
-    return {
-      sets: defaultSets,
-      splitLR: existing?.splitLR ?? false,
-      barWeight: existing?.barWeight ?? 20,
-      note: existing?.note ?? '',
-      recordedForPawel: existing?.recordedForPawel ?? false
-    };
-  };
-
-  const getPreviousWeekAdvice = (exercise, setIdx) => {
-    if (selectedWeek <= 1) return null;
-    const prevLog = logs[selectedWeek - 1]?.[exercise.id];
-    const prevSet = prevLog?.sets?.[setIdx];
-    if (!prevSet || (!prevSet.weight && !prevSet.reps)) return null;
-
-    const w = parseFloat(prevSet.weight);
-    const r = parseInt(prevSet.reps, 10);
-    const rir = prevSet.rir;
-
-    let suggestion = null;
-    if (!isNaN(w)) {
-      if (rir === '3-4' || rir === '5+' || (!isNaN(r) && exercise.targetMaxReps && r >= exercise.targetMaxReps && rir === '2')) {
-        const increment = w >= 20 ? 2.5 : 1.5;
-        suggestion = `Cel dziś: ${(w + increment).toFixed(1).replace('.0', '')} kg (T${selectedWeek - 1}: ${w}kg × ${prevSet.reps || '?'})`;
-      } else {
-        suggestion = `Tydz. ${selectedWeek - 1}: ${w} kg × ${prevSet.reps || '?'} (RIR ${rir})`;
-      }
-    } else {
-      suggestion = `Tydz. ${selectedWeek - 1}: ${prevSet.reps} powt.`;
-    }
-
-    return { text: suggestion, prevWeight: prevSet.weight, prevReps: prevSet.reps };
-  };
-
-  const updateExerciseLog = (exercise, updater) => {
-    setLogs((prev) => {
-      const current = getExerciseLog(selectedWeek, exercise);
-      const updated = updater(current);
-      return {
-        ...prev,
-        [selectedWeek]: {
-          ...(prev[selectedWeek] || {}),
-          [exercise.id]: updated
-        }
-      };
-    });
-  };
-
-  const handleSetChange = (exercise, setIdx, field, value) => {
-    updateExerciseLog(exercise, (curr) => {
-      const newSets = [...curr.sets];
-      newSets[setIdx] = { ...newSets[setIdx], [field]: value };
-      return { ...curr, sets: newSets };
-    });
-  };
-
-  const handleToggleSetDone = (exercise, setIdx) => {
-    const curr = getExerciseLog(selectedWeek, exercise);
-    const willBeDone = !curr.sets[setIdx].done;
-
-    updateExerciseLog(exercise, (c) => {
-      const newSets = [...c.sets];
-      const prevAdvice = getPreviousWeekAdvice(exercise, setIdx);
-      newSets[setIdx] = {
-        ...newSets[setIdx],
-        done: willBeDone,
-        weight: newSets[setIdx].weight || prevAdvice?.prevWeight || '',
-        reps: newSets[setIdx].reps || prevAdvice?.prevReps || exercise.reps.split('-')[0] || ''
-      };
-      return { ...c, sets: newSets };
-    });
-
-    if (willBeDone && exercise.rest && exercise.rest > 0) {
-      startBottomTimer(exercise.rest, exercise.name, 'REST', 0);
-    }
-  };
-
-  const handleVideoUpload = async (exercise, file) => {
-    if (!file) return;
-    const key = `w${selectedWeek}_${exercise.id}`;
-    await saveVideoBlobToDB(key, file, {
-      week: selectedWeek,
-      workoutId: selectedWorkout,
-      exerciseId: exercise.id,
-      exerciseName: exercise.name
-    });
-    updateExerciseLog(exercise, (curr) => ({ ...curr, recordedForPawel: true }));
-    await refreshVideosFromDB();
-    setOpenDemos((prev) => ({ ...prev, [exercise.id]: true }));
-  };
-
-  // Usuwanie filmiku (zarówno z karty ćwiczenia, jak i z zakładki Wideo)
-  const handleDeleteVideo = async (key, exercise = null) => {
-    await deleteVideoFromDB(key);
-    if (exercise) {
-      updateExerciseLog(exercise, (curr) => ({ ...curr, recordedForPawel: false }));
-    }
-    await refreshVideosFromDB();
-  };
-
-  const handleShareVideo = async (videoObj) => {
-    if (navigator.share && videoObj?.blob) {
-      try {
-        const ext = videoObj.name?.split('.').pop() || 'mp4';
-        const file = new File([videoObj.blob], `${videoObj.exerciseName.replace(/[^a-zA-Z0-9]/g, '_')}.${ext}`, {
-          type: videoObj.blob.type || 'video/mp4'
-        });
-        await navigator.share({
-          title: `${videoObj.exerciseName} - Tydzień ${videoObj.week}`,
-          text: `${videoObj.exerciseName} (Tydzień ${videoObj.week})`,
-          files: [file]
-        });
-        return;
-      } catch {
-        // fallback do pobrania
-      }
-    }
-    const a = document.createElement('a');
-    a.href = videoObj.url;
-    a.download = `${videoObj.exerciseName}_Tydzien_${videoObj.week}.mp4`;
-    a.click();
-  };
-
-  // Pobierz listę wszystkich wideo przypisanych do bieżącego treningu i tygodnia
-  const getCurrentWorkoutVideos = () => {
-    const workout = WORKOUT_PLAN[selectedWorkout];
-    const allExercises = [...workout.warmup, ...workout.main];
-    const vids = [];
-    allExercises.forEach((ex) => {
-      const key = `w${selectedWeek}_${ex.id}`;
-      if (localVideos[key]) {
-        vids.push(localVideos[key]);
-      }
-    });
-    return vids;
-  };
-
-  // Udostępnij na iPhonie raport tekstowy RAZEM ze wszystkimi filmikami z dzisiejszego treningu
-  const handleShareReportWithVideos = async () => {
-    const reportText = generatePawelReport();
-    const workoutVideos = getCurrentWorkoutVideos();
-
-    if (navigator.share) {
-      try {
-        const filesToShare = workoutVideos
-          .filter((v) => v.blob)
-          .map((v, i) => {
-            const cleanName = v.exerciseName.replace(/[^a-zA-Z0-9]/g, '_');
-            return new File([v.blob], `${i + 1}_${cleanName}_T${selectedWeek}.mp4`, {
-              type: v.blob.type || 'video/mp4'
-            });
-          });
-
-        if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
-          await navigator.share({
-            title: `Raport Hyrox • Tydzień ${selectedWeek}`,
-            text: reportText,
-            files: filesToShare
-          });
-          return;
-        } else {
-          await navigator.share({
-            title: `Raport Hyrox • Tydzień ${selectedWeek}`,
-            text: reportText
-          });
-          return;
-        }
-      } catch {
-        // Jeśli anulowano lub przeglądarka na PC, przejdź do pobrania paczki
-      }
-    }
-
-    handleDownloadReportAndVideos();
-  };
-
-  // Pobierz raport (.txt) oraz wszystkie filmiki (.mp4) z bieżącego treningu jednym kliknięciem
-  const handleDownloadReportAndVideos = () => {
-    const reportText = generatePawelReport();
-    const workoutVideos = getCurrentWorkoutVideos();
-
-    // 1. Pobierz plik tekstowy z raportem
-    const txtBlob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
-    const txtUrl = URL.createObjectURL(txtBlob);
-    const txtLink = document.createElement('a');
-    txtLink.href = txtUrl;
-    txtLink.download = `Raport_Trening_${selectedWorkout}_Tydzien_${selectedWeek}.txt`;
-    document.body.appendChild(txtLink);
-    txtLink.click();
-    document.body.removeChild(txtLink);
-
-    // 2. Pobierz automatycznie wszystkie filmiki nagrane w tym treningu
-    workoutVideos.forEach((vid, idx) => {
-      setTimeout(() => {
-        const a = document.createElement('a');
-        a.href = vid.url;
-        const cleanName = vid.exerciseName.replace(/[^a-zA-Z0-9]/g, '_');
-        a.download = `${idx + 1}_${cleanName}_Tydzien_${selectedWeek}.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }, (idx + 1) * 450);
-    });
-  };
-
-  const handleExportBackup = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      logs,
-      finisherLogs,
-      selectedWeek
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `hyrox_plan_backup_t${selectedWeek}.json`;
-    a.click();
-  };
-
-  const handleImportBackup = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        if (data.logs) setLogs(data.logs);
-        if (data.finisherLogs) setFinisherLogs(data.finisherLogs);
-        if (data.selectedWeek) setSelectedWeek(data.selectedWeek);
-        alert('Wczytano kopię zapasową.');
-        setShowBackupModal(false);
-      } catch {
-        alert('Nieprawidłowy plik.');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const generatePawelReport = () => {
-    const workout = WORKOUT_PLAN[selectedWorkout];
-    const workoutVideos = getCurrentWorkoutVideos();
-    const lines = [
-      `RAPORT • TYDZIEŃ ${selectedWeek}`,
-      `${workout.title}`,
-      `────────────────────`
-    ];
-    workout.main.forEach((ex) => {
-      const exLog = getExerciseLog(selectedWeek, ex);
-      const hasVideo = !!localVideos[`w${selectedWeek}_${ex.id}`];
-      const completedSets = exLog.sets.filter((s) => s.done || s.weight || s.reps);
-      if (completedSets.length > 0) {
-        const setsStr = completedSets
-          .map((s) => {
-            if (exLog.splitLR && ex.unilateral) {
-              return `L:${s.weight || 0}kg×${s.reps || 0} / P:${s.weightRight || s.weight || 0}kg×${s.repsRight || s.reps || 0} (RIR ${s.rir})`;
-            }
-            return `${s.weight ? s.weight + 'kg' : 'BW'}×${s.reps || ex.reps} (RIR ${s.rir})`;
-          })
-          .join(', ');
-        lines.push(`✓ ${ex.name}: ${setsStr}${hasVideo ? ' [🎥 Wideo załączone]' : ''}`);
-        if (exLog.note) lines.push(`  Notatka: ${exLog.note}`);
-      } else {
-        lines.push(`- ${ex.name}: brak wpisu${hasVideo ? ' [🎥 Wideo załączone]' : ''}`);
-      }
-    });
-
-    const fLog = finisherLogs[selectedWeek]?.[selectedWorkout];
-    lines.push(`────────────────────`);
-    lines.push(
-      `${workout.finisher.title}: ${
-        fLog?.rounds || fLog?.kcalOrTime
-          ? `${fLog.rounds ? fLog.rounds + ' ' : ''}${fLog.kcalOrTime ? '(' + fLog.kcalOrTime + ')' : ''}`
-          : 'Zrobione'
-      }`
-    );
-    if (workoutVideos.length > 0) {
-      lines.push(`🎥 Nagrane filmiki z treningu (${workoutVideos.length}): ${workoutVideos.map((v) => v.exerciseName).join(', ')}`);
-    }
-    return lines.join('\n');
-  };
-
-  const currentWorkout = WORKOUT_PLAN[selectedWorkout];
-  const currentWorkoutVideos = getCurrentWorkoutVideos();
-  const currentFinisherLog = finisherLogs[selectedWeek]?.[selectedWorkout] || {
-    rounds: '',
-    kcalOrTime: '',
-    note: '',
-    completed: false
-  };
-
-  const updateFinisherLog = (field, value) => {
-    setFinisherLogs((prev) => ({
+  const updateGarminData = (fields) => {
+    setLogs((prev) => ({
       ...prev,
       [selectedWeek]: {
         ...(prev[selectedWeek] || {}),
-        [selectedWorkout]: {
-          ...currentFinisherLog,
-          [field]: value
+        [`garmin_w${selectedWorkout}`]: {
+          ...currentGarminData,
+          ...fields
         }
       }
     }));
   };
 
-  const totalMainSets = currentWorkout.main.reduce((acc, ex) => acc + ex.sets, 0);
-  const completedMainSets = currentWorkout.main.reduce((acc, ex) => {
-    const l = getExerciseLog(selectedWeek, ex);
-    return acc + l.sets.filter((s) => s.done).length;
-  }, 0);
-  const progressPercent = Math.round((completedMainSets / totalMainSets) * 100);
+  const saveStravaCredentials = () => {
+    localStorage.setItem('strava_access_token', stravaToken.trim());
+    localStorage.setItem('strava_client_id', stravaClientId.trim());
+    localStorage.setItem('strava_client_secret', stravaClientSecret.trim());
+    setIsConfigOpen(false);
+    alert('Zapisano dane Stravy na Twoim telefonie!');
+  };
 
-  const bottomTimerPercent =
-    bottomTimer.total > 0
-      ? Math.min(100, Math.max(0, ((bottomTimer.total - bottomTimer.remaining) / bottomTimer.total) * 100))
-      : 0;
+  // Pobranie ostatniej aktywności ze Strava API
+  const fetchLatestStravaActivity = async () => {
+    const token = stravaToken.trim();
+    if (!token) {
+      setIsConfigOpen(true);
+      return;
+    }
 
-  const finisherPercent =
-    finisherTimer.totalSeconds > 0
-      ? Math.min(100, Math.max(0, (finisherTimer.seconds / finisherTimer.totalSeconds) * 100))
-      : 0;
+    setIsLoading(true);
+    try {
+      const res = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=1', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error('Błąd autoryzacji Strava. Sprawdź swój token.');
+      }
+
+      const activities = await res.json();
+      if (!activities || activities.length === 0) {
+        alert('Nie znaleziono żadnych ostatnich aktywności na Stravie.');
+        setIsLoading(false);
+        return;
+      }
+
+      const act = activities[0];
+      const durationMin = Math.round((act.moving_time || act.elapsed_time || 0) / 60);
+      const calories = act.calories ? Math.round(act.calories) : act.kilojoules ? Math.round(act.kilojoules * 0.239) : '';
+      const avgHr = act.average_heartrate ? Math.round(act.average_heartrate) : '';
+      const maxHr = act.max_heartrate ? Math.round(act.max_heartrate) : '';
+
+      updateGarminData({
+        durationMinutes: durationMin || '',
+        calories: calories || '',
+        avgHr: avgHr || '',
+        maxHr: maxHr || '',
+        activityName: act.name || 'Trening',
+        syncedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    } catch (err) {
+      alert(err.message || 'Nie udało się pobrać danych ze Stravy.');
+      setIsConfigOpen(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div
-      style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif" }}
-      className="min-h-screen bg-[#F8B4A6] text-[#141414] pb-32 selection:bg-[#141414] selection:text-white"
-    >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
-
-      {/* GÓRNY OBSZAR */}
-      <div className="max-w-xl mx-auto px-4 pt-5 pb-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex-1 bg-white rounded-full px-4 py-2 flex flex-col justify-center shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#E0533C]" />
-                <span className="text-xs font-extrabold tracking-tight text-[#141414]">
-                  HYROX • TYDZIEŃ {selectedWeek}
-                </span>
-              </div>
-              <span className="text-[11px] font-bold text-[#7A625D]">
-                {completedMainSets}/{totalMainSets} ({progressPercent}%)
-              </span>
-            </div>
-            <div className="w-full h-1 bg-[#F9E5E0] rounded-full overflow-hidden mt-1">
-              <div
-                className="h-full bg-[#E0533C] transition-all duration-300 rounded-full"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={toggleWakeLock}
-              title="Nie wygaszaj ekranu"
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition shadow-sm ${
-                wakeLockActive ? 'bg-[#141414] text-white' : 'bg-white text-[#141414]'
-              }`}
-            >
-              <Smartphone className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition shadow-sm ${
-                soundEnabled ? 'bg-white text-[#141414]' : 'bg-white/60 text-[#7A625D]'
-              }`}
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={() => setShowBackupModal(true)}
-              className="w-10 h-10 rounded-full bg-white text-[#141414] flex items-center justify-center shadow-sm"
-            >
-              <ShieldCheck className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Wybór tygodnia 1-8 */}
-        <div className="mt-3 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((w) => (
-            <button
-              key={w}
-              onClick={() => setSelectedWeek(w)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-                selectedWeek === w
-                  ? 'bg-[#141414] text-white shadow-sm'
-                  : 'bg-white/50 text-[#141414] hover:bg-white/80'
-              }`}
-            >
-              Tydz. {w}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* GŁÓWNA KARTA */}
-      <main className="max-w-xl mx-auto bg-[#FFF6F3] rounded-t-[38px] rounded-b-[38px] px-5 pt-7 pb-10 shadow-xl min-h-[82vh]">
-        <div className="flex items-start justify-between gap-4">
+    <div className="bg-[#F8B4A6] rounded-[30px] p-5 space-y-3.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-full bg-[#141414] text-white flex items-center justify-center">
+            <Watch className="w-4 h-4" />
+          </span>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#9A7B74]">
-              Plan Treningowy • RIR 2
+            <h3 className="font-extrabold text-sm sm:text-base text-[#141414]">
+              Dane z zegarka (Garmin • Strava)
+            </h3>
+            <p className="text-[11px] font-semibold text-[#141414]/70">
+              {currentGarminData.syncedAt
+                ? `Zsynchronizowano o ${currentGarminData.syncedAt} (${currentGarminData.activityName})`
+                : 'Automatycznie pobierz tętno i spalone kcal'}
             </p>
-            <h1 className="text-3xl font-extrabold tracking-tight text-[#141414] leading-tight mt-0.5">
-              {activeTab === 'workout'
-                ? currentWorkout.shortTitle
-                : activeTab === 'progress'
-                ? 'Progres'
-                : activeTab === 'videos'
-                ? 'Moje wideo'
-                : 'Skala RIR'}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-[#F9E5E0] p-1 rounded-full">
-            <button
-              onClick={() => setActiveTab('workout')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
-                activeTab === 'workout' ? 'bg-[#141414] text-white' : 'text-[#141414]'
-              }`}
-            >
-              Plan
-            </button>
-            <button
-              onClick={() => setActiveTab('progress')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
-                activeTab === 'progress' ? 'bg-[#141414] text-white' : 'text-[#141414]'
-              }`}
-            >
-              Wyniki
-            </button>
-            <button
-              onClick={() => setActiveTab('videos')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
-                activeTab === 'videos' ? 'bg-[#141414] text-white' : 'text-[#141414]'
-              }`}
-            >
-              Wideo ({Object.keys(localVideos).length})
-            </button>
-            <button
-              onClick={() => setActiveTab('rir_guide')}
-              className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition ${
-                activeTab === 'rir_guide' ? 'bg-[#141414] text-white' : 'text-[#141414]'
-              }`}
-            >
-              ?
-            </button>
           </div>
         </div>
 
-        {/* PASTYLKI WYBORU TRENINGU */}
-        {activeTab === 'workout' && (
-          <div className="mt-5 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            {[1, 2, 3].map((id) => {
-              const w = WORKOUT_PLAN[id];
-              const isSelected = selectedWorkout === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => setSelectedWorkout(id)}
-                  className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-                    isSelected
-                      ? 'bg-[#141414] text-white shadow-sm'
-                      : 'bg-transparent text-[#141414] border border-[#141414]/35 hover:border-[#141414]'
-                  }`}
-                >
-                  Trening {id} • {w.shortTitle}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* WIDOK: SKALA RIR */}
-        {activeTab === 'rir_guide' && (
-          <div className="mt-6 space-y-3">
-            <div className="p-4 rounded-[24px] bg-[#F9E5E0]">
-              <span className="px-2.5 py-1 rounded-full bg-[#141414] text-white text-[11px] font-bold">
-                RIR 2 • Cel od 2. tygodnia
-              </span>
-              <p className="text-sm font-semibold text-[#141414] mt-2">
-                Zostawiasz dokładnie 2 powtórzenia w zapasie (70–80% maksa). Czujesz mocną pracę, ale ostatnie 2 ruchy
-                wciąż byłyby poprawne technicznie.
-              </p>
-            </div>
-            <div className="p-4 rounded-[24px] bg-[#F9E5E0]">
-              <span className="px-2.5 py-1 rounded-full bg-[#E0533C] text-white text-[11px] font-bold">
-                RIR 5+ • Za lekko
-              </span>
-              <p className="text-sm font-semibold text-[#141414] mt-2">
-                Jeśli po serii czujesz, że zrobisz jeszcze 5 powtórzeń, traktujesz ją jako rozgrzewkową i dokładasz
-                ciężaru.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* WIDOK: MOJE WIDEO */}
-        {activeTab === 'videos' && (
-          <div className="mt-6">
-            {Object.keys(localVideos).length === 0 ? (
-              <div className="p-10 rounded-[28px] bg-[#F9E5E0] text-center text-sm font-semibold text-[#7A625D]">
-                Brak wgranych filmików. Kliknij „+ Wideo” przy dowolnym ćwiczeniu.
-              </div>
-            ) : (
-              <div className="grid sm:grid-cols-2 gap-3">
-                {Object.values(localVideos).map((vid) => (
-                  <div key={vid.key} className="bg-[#F9E5E0] rounded-[24px] overflow-hidden p-3 space-y-2.5">
-                    <video src={vid.url} controls playsInline className="w-full h-48 object-cover rounded-[16px] bg-black" />
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-[#7A625D]">Tydzień {vid.week}</span>
-                        <h3 className="font-bold text-sm text-[#141414]">{vid.exerciseName}</h3>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => handleShareVideo(vid)}
-                          className="px-3 py-1.5 rounded-full bg-[#141414] text-white text-xs font-bold flex items-center gap-1"
-                        >
-                          <Share2 className="w-3 h-3" />
-                          <span>Wyślij</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteVideo(vid.key)}
-                          title="Usuń ten filmik"
-                          className="p-1.5 rounded-full bg-[#E0533C] text-white"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* WIDOK: TABELA PROGRESU 8 TYGODNI */}
-        {activeTab === 'progress' && (
-          <div className="mt-6 space-y-4">
-            {[1, 2, 3].map((wId) => (
-              <div key={wId} className="bg-[#F9E5E0] rounded-[26px] p-4 overflow-x-auto">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#141414] mb-3">
-                  {WORKOUT_PLAN[wId].title}
-                </h3>
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#141414]/10 text-[#7A625D]">
-                      <th className="py-1.5 pr-2">Ćwiczenie</th>
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((wk) => (
-                        <th key={wk} className="py-1.5 px-1 text-center">
-                          T{wk}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#141414]/5">
-                    {WORKOUT_PLAN[wId].main.map((ex) => (
-                      <tr key={ex.id}>
-                        <td className="py-2 pr-2 font-bold text-[#141414]">{ex.name}</td>
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map((wk) => {
-                          const l = logs[wk]?.[ex.id];
-                          const weights =
-                            l?.sets?.map((s) => parseFloat(s.weight)).filter((n) => !isNaN(n) && n > 0) || [];
-                          const maxW = weights.length > 0 ? Math.max(...weights) : null;
-                          return (
-                            <td key={wk} className="py-2 px-1 text-center">
-                              {maxW ? (
-                                <span className="px-2 py-0.5 rounded-full bg-[#141414] text-white font-bold text-[11px]">
-                                  {maxW}
-                                </span>
-                              ) : (
-                                <span className="text-[#9A7B74]">-</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* WIDOK GŁÓWNY: TRENING */}
-        {activeTab === 'workout' && (
-          <div className="mt-6 space-y-6">
-            {/* MOBILIZACJA (ROZGRZEWKA) */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-extrabold uppercase tracking-wider text-[#7A625D]">
-                  Mobilizacja (Rozgrzewka)
-                </h2>
-                <span className="text-xs font-bold text-[#7A625D]">{currentWorkout.warmup.length} ćwiczeń</span>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-2.5">
-                {currentWorkout.warmup.map((ex) => {
-                  const exLog = getExerciseLog(selectedWeek, ex);
-                  const isDemoOpen = !!openDemos[ex.id];
-                  const videoKey = `w${selectedWeek}_${ex.id}`;
-                  const uploadedVideo = localVideos[videoKey];
-                  const allDone = exLog.sets.every((s) => s.done);
-
-                  return (
-                    <div
-                      key={ex.id}
-                      className={`rounded-[24px] p-3.5 transition flex flex-col justify-between gap-2.5 ${
-                        allDone ? 'bg-[#F3D5CE]' : 'bg-[#F9E5E0]'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h3 className="font-bold text-sm text-[#141414] leading-snug">{ex.name}</h3>
-                          <p className="text-xs font-semibold text-[#7A625D] mt-0.5">
-                            {ex.sets} × {ex.reps} • {ex.notes}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <label
-                            title={uploadedVideo ? 'Podmień filmik' : 'Dodaj filmik'}
-                            className={`cursor-pointer w-7 h-7 rounded-full flex items-center justify-center shadow-sm ${
-                              uploadedVideo ? 'bg-[#141414] text-white' : 'bg-white text-[#141414]'
-                            }`}
-                          >
-                            <Video className="w-3.5 h-3.5" />
-                            <input
-                              type="file"
-                              accept="video/*"
-                              className="hidden"
-                              onChange={(e) => handleVideoUpload(ex, e.target.files?.[0])}
-                            />
-                          </label>
-                          {/* Szybkie usuwanie błędnego filmiku z poziomu kafelka rozgrzewki */}
-                          {uploadedVideo && (
-                            <button
-                              onClick={() => handleDeleteVideo(videoKey, ex)}
-                              title="Usuń wgrany filmik"
-                              className="w-7 h-7 rounded-full bg-[#E0533C] text-white flex items-center justify-center shadow-sm"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                            className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
-                              isDemoOpen ? 'bg-[#141414] text-white' : 'bg-white text-[#141414]'
-                            }`}
-                          >
-                            <Activity className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {exLog.sets.map((s, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleToggleSetDone(ex, idx)}
-                            className={`flex-1 py-1.5 rounded-full text-xs font-bold flex items-center justify-center gap-1 transition ${
-                              s.done
-                                ? 'bg-[#141414] text-white'
-                                : 'bg-white text-[#141414] hover:bg-white/80'
-                            }`}
-                          >
-                            {s.done && <Check className="w-3 h-3" />}
-                            <span>S{idx + 1}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {isDemoOpen && (
-                        <div className="pt-2 space-y-2">
-                          <AnatomicalExerciseAnimator exercise={ex} />
-                          <ul className="text-[11px] font-medium text-[#5C4742] list-disc pl-4 space-y-1">
-                            {ex.cues.map((c, i) => (
-                              <li key={i}>{c}</li>
-                            ))}
-                          </ul>
-                          {uploadedVideo && (
-                            <div className="space-y-1.5">
-                              <video
-                                src={uploadedVideo.url}
-                                controls
-                                playsInline
-                                className="w-full h-32 object-cover rounded-[16px] bg-black"
-                              />
-                              <button
-                                onClick={() => handleDeleteVideo(videoKey, ex)}
-                                className="w-full py-1.5 rounded-full bg-[#E0533C] text-white text-xs font-bold flex items-center justify-center gap-1"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Usuń ten filmik</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* CZĘŚĆ GŁÓWNA */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-extrabold uppercase tracking-wider text-[#7A625D]">
-                  Część Główna
-                </h2>
-                <span className="text-xs font-bold text-[#7A625D]">Automatyczny stoper przerw</span>
-              </div>
-
-              {currentWorkout.main.map((ex) => {
-                const exLog = getExerciseLog(selectedWeek, ex);
-                const isDemoOpen = !!openDemos[ex.id];
-                const isPlateOpen = !!openPlateCalc[ex.id];
-                const videoKey = `w${selectedWeek}_${ex.id}`;
-                const uploadedVideo = localVideos[videoKey];
-
-                return (
-                  <div
-                    key={ex.id}
-                    className="bg-[#F9E5E0] rounded-[28px] p-4 space-y-3.5 transition"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-extrabold text-base text-[#141414]">{ex.name}</h3>
-                          {ex.superset && (
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#141414] text-white">
-                              {ex.superset}
-                            </span>
-                          )}
-                          {ex.unilateral && (
-                            <button
-                              onClick={() => updateExerciseLog(ex, (c) => ({ ...c, splitLR: !c.splitLR }))}
-                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full transition ${
-                                exLog.splitLR
-                                  ? 'bg-[#141414] text-white'
-                                  : 'bg-white text-[#141414]'
-                              }`}
-                            >
-                              {exLog.splitLR ? 'L / P osobno' : 'Podziel L/P'}
-                            </button>
-                          )}
-                          {ex.barbell && (
-                            <button
-                              onClick={() => setOpenPlateCalc((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                              className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#141414] flex items-center gap-1"
-                            >
-                              <Scale className="w-3 h-3" />
-                              <span>Talerze</span>
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-xs font-semibold text-[#7A625D] mt-0.5">
-                          {ex.sets} serie × {ex.reps} • Przerwa {ex.rest}s • {ex.notes}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <label
-                          className={`cursor-pointer px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm ${
-                            uploadedVideo ? 'bg-[#141414] text-white' : 'bg-white text-[#141414]'
-                          }`}
-                        >
-                          <Video className="w-3.5 h-3.5" />
-                          <span>{uploadedVideo ? 'Wideo ✓' : '+ Wideo'}</span>
-                          <input
-                            type="file"
-                            accept="video/*"
-                            className="hidden"
-                            onChange={(e) => handleVideoUpload(ex, e.target.files?.[0])}
-                          />
-                        </label>
-
-                        {/* Natychmiastowe usuwanie błędnego wideo prosto z karty ćwiczenia */}
-                        {uploadedVideo && (
-                          <button
-                            onClick={() => handleDeleteVideo(videoKey, ex)}
-                            title="Usuń błędny filmik"
-                            className="w-8 h-8 rounded-full bg-[#E0533C] text-white flex items-center justify-center shadow-sm"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition shadow-sm ${
-                            isDemoOpen
-                              ? 'bg-[#141414] text-white'
-                              : 'bg-white text-[#141414]'
-                          }`}
-                        >
-                          <Activity className="w-3.5 h-3.5" />
-                          <span>Ruch</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {ex.barbell && isPlateOpen && (
-                      <div className="p-3 rounded-[20px] bg-white space-y-2 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-[#141414]">Talerze na jedną stronę:</span>
-                          <div className="flex gap-1">
-                            {[20, 15, 10].map((bw) => (
-                              <button
-                                key={bw}
-                                onClick={() => updateExerciseLog(ex, (c) => ({ ...c, barWeight: bw }))}
-                                className={`px-2 py-0.5 rounded-full font-bold ${
-                                  exLog.barWeight === bw ? 'bg-[#141414] text-white' : 'bg-[#F9E5E0] text-[#141414]'
-                                }`}
-                              >
-                                {bw}kg
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        {exLog.sets.map((s, idx) => {
-                          const plates = calculatePlates(s.weight, exLog.barWeight);
-                          return (
-                            <div key={idx} className="flex items-center justify-between text-[#7A625D]">
-                              <span>Seria {idx + 1} ({s.weight || 0} kg):</span>
-                              <div className="flex gap-1">
-                                {plates.length > 0 ? (
-                                  plates.map((p, pIdx) => (
-                                    <span
-                                      key={pIdx}
-                                      className="px-2 py-0.5 rounded-full bg-[#F9E5E0] text-[#141414] font-bold"
-                                    >
-                                      +{p}kg
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span>Sam gryf</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Wiersze serii */}
-                    <div className="space-y-2">
-                      {exLog.sets.map((s, idx) => {
-                        const advice = getPreviousWeekAdvice(ex, idx);
-                        const isTooLightWarmup = s.rir === '5+';
-
-                        return (
-                          <div
-                            key={idx}
-                            className={`p-2.5 rounded-[20px] transition space-y-1.5 ${
-                              s.done ? 'bg-[#F3D5CE]' : 'bg-[#FFF6F3]'
-                            }`}
-                          >
-                            {advice && (
-                              <span className="inline-block text-[10px] font-bold text-[#7A625D] px-1">
-                                {advice.text}
-                              </span>
-                            )}
-
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                              <span className="w-5 text-xs font-extrabold text-[#141414] text-center">
-                                {idx + 1}
-                              </span>
-
-                              {!exLog.splitLR ? (
-                                <>
-                                  <input
-                                    type="number"
-                                    step="0.5"
-                                    placeholder={advice?.prevWeight ? `${advice.prevWeight} kg` : 'kg'}
-                                    value={s.weight}
-                                    onChange={(e) => handleSetChange(ex, idx, 'weight', e.target.value)}
-                                    className="w-16 sm:w-20 px-2.5 py-2 rounded-full bg-white text-xs font-extrabold text-[#141414] placeholder:text-[#9A7B74] outline-none text-center"
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder={`${ex.reps}`}
-                                    value={s.reps}
-                                    onChange={(e) => handleSetChange(ex, idx, 'reps', e.target.value)}
-                                    className="w-16 sm:w-20 px-2.5 py-2 rounded-full bg-white text-xs font-extrabold text-[#141414] placeholder:text-[#9A7B74] outline-none text-center"
-                                  />
-                                </>
-                              ) : (
-                                <div className="flex-1 grid grid-cols-2 gap-1.5">
-                                  <div className="flex items-center gap-1 bg-white rounded-full px-2 py-1">
-                                    <span className="text-[10px] font-extrabold text-[#7A625D]">L</span>
-                                    <input
-                                      type="number"
-                                      step="0.5"
-                                      placeholder="kg"
-                                      value={s.weight}
-                                      onChange={(e) => handleSetChange(ex, idx, 'weight', e.target.value)}
-                                      className="w-full text-xs font-bold text-[#141414] outline-none text-center"
-                                    />
-                                    <input
-                                      type="text"
-                                      placeholder="powt"
-                                      value={s.reps}
-                                      onChange={(e) => handleSetChange(ex, idx, 'reps', e.target.value)}
-                                      className="w-full text-xs font-bold text-[#141414] outline-none text-center"
-                                    />
-                                  </div>
-                                  <div className="flex items-center gap-1 bg-white rounded-full px-2 py-1">
-                                    <span className="text-[10px] font-extrabold text-[#E0533C]">P</span>
-                                    <input
-                                      type="number"
-                                      step="0.5"
-                                      placeholder="kg"
-                                      value={s.weightRight}
-                                      onChange={(e) => handleSetChange(ex, idx, 'weightRight', e.target.value)}
-                                      className="w-full text-xs font-bold text-[#141414] outline-none text-center"
-                                    />
-                                    <input
-                                      type="text"
-                                      placeholder="powt"
-                                      value={s.repsRight}
-                                      onChange={(e) => handleSetChange(ex, idx, 'repsRight', e.target.value)}
-                                      className="w-full text-xs font-bold text-[#141414] outline-none text-center"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              <select
-                                value={s.rir}
-                                onChange={(e) => handleSetChange(ex, idx, 'rir', e.target.value)}
-                                className="flex-1 min-w-[72px] px-2 py-2 rounded-full bg-white text-xs font-bold text-[#141414] outline-none text-center"
-                              >
-                                <option value="2">RIR 2</option>
-                                <option value="1">RIR 1</option>
-                                <option value="0">RIR 0</option>
-                                <option value="3-4">RIR 3-4</option>
-                                <option value="5+">RIR 5+</option>
-                              </select>
-
-                              {ex.timedSeconds && (
-                                <button
-                                  onClick={() =>
-                                    startBottomTimer(
-                                      ex.timedSeconds,
-                                      `${ex.name} (Seria ${idx + 1})`,
-                                      'WORK',
-                                      ex.rest || 0
-                                    )
-                                  }
-                                  title="Odliczaj czas trzymania pozycji"
-                                  className="px-3 py-2 rounded-full bg-white hover:bg-[#141414] text-[#141414] hover:text-white font-bold text-xs flex items-center gap-1 transition shadow-sm"
-                                >
-                                  <Timer className="w-3.5 h-3.5 text-[#E0533C]" />
-                                  <span>{ex.timedSeconds}s</span>
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => handleToggleSetDone(ex, idx)}
-                                className={`px-3.5 py-2 rounded-full font-bold text-xs flex items-center justify-center gap-1 transition ${
-                                  s.done
-                                    ? 'bg-[#141414] text-white'
-                                    : 'bg-[#F8B4A6] hover:bg-[#141414] text-[#141414] hover:text-white'
-                                }`}
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-
-                            {isTooLightWarmup && (
-                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#E0533C] px-2">
-                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                <span>RIR 5+ = seria zbyt lekka (rozgrzewkowa), dołóż ciężaru.</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <input
-                      type="text"
-                      placeholder="Dodaj notatkę..."
-                      value={exLog.note}
-                      onChange={(e) => updateExerciseLog(ex, (c) => ({ ...c, note: e.target.value }))}
-                      className="w-full px-4 py-2 rounded-full bg-[#FFF6F3] text-xs font-medium text-[#141414] placeholder:text-[#9A7B74] outline-none"
-                    />
-
-                    {isDemoOpen && (
-                      <div className="pt-2 grid sm:grid-cols-2 gap-3">
-                        <AnatomicalExerciseAnimator exercise={ex} />
-
-                        <div className="bg-[#FFF6F3] rounded-[24px] p-3.5 flex flex-col justify-between space-y-3 border border-[#F3D5CE]">
-                          <div>
-                            <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#F9E5E0] text-[#141414]">
-                              {ex.muscles}
-                            </span>
-                            <ul className="mt-2.5 space-y-1.5 text-xs font-medium text-[#5C4742] list-disc pl-4">
-                              {ex.cues.map((c, i) => (
-                                <li key={i}>{c}</li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          {uploadedVideo ? (
-                            <div className="space-y-2">
-                              <video
-                                src={uploadedVideo.url}
-                                controls
-                                playsInline
-                                className="w-full h-36 object-cover rounded-[16px] bg-black"
-                              />
-                              <div className="flex gap-1.5">
-                                <button
-                                  onClick={() => handleShareVideo(uploadedVideo)}
-                                  className="flex-1 py-2 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center justify-center gap-1"
-                                >
-                                  <Share2 className="w-3.5 h-3.5" />
-                                  <span>Wyślij Pawłowi</span>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteVideo(videoKey, ex)}
-                                  className="px-3 py-2 rounded-full bg-[#E0533C] text-white text-xs font-bold flex items-center gap-1"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Usuń</span>
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <label className="cursor-pointer py-2.5 px-3 rounded-full bg-[#F9E5E0] hover:bg-[#F8B4A6] text-[#141414] text-xs font-bold flex items-center justify-center gap-1.5 transition">
-                              <Upload className="w-3.5 h-3.5" />
-                              <span>+ Dodaj swój filmik z galerii</span>
-                              <input
-                                type="file"
-                                accept="video/*"
-                                className="hidden"
-                                onChange={(e) => handleVideoUpload(ex, e.target.files?.[0])}
-                              />
-                            </label>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </section>
-
-            {/* FINISHER Z PASKIEM POSTĘPU CZASU */}
-            <section className="bg-[#F8B4A6] rounded-[30px] p-5 space-y-3.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#141414] text-white">
-                    Finisher
-                  </span>
-                  <h3 className="text-lg font-extrabold text-[#141414] mt-1.5">
-                    {currentWorkout.finisher.title}
-                  </h3>
-                </div>
-
-                {currentWorkout.finisher.type === 'EMOM' && (
-                  <button
-                    onClick={() => toggleFinisherTimer('EMOM', 300)}
-                    className="px-4 py-2.5 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center gap-1.5"
-                  >
-                    {finisherTimer.active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                    <span>{finisherTimer.active ? 'Pauza' : 'Start 5:00'}</span>
-                  </button>
-                )}
-
-                {currentWorkout.finisher.type === 'AMRAP' && (
-                  <button
-                    onClick={() => toggleFinisherTimer('AMRAP', 360)}
-                    className="px-4 py-2.5 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center gap-1.5"
-                  >
-                    {finisherTimer.active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                    <span>{finisherTimer.active ? 'Pauza' : 'Start 6:00'}</span>
-                  </button>
-                )}
-
-                {currentWorkout.finisher.type === 'CIRCUIT' && (
-                  <button
-                    onClick={() => startBottomTimer(120, 'Przerwa między Obwodami', 'REST', 0)}
-                    className="px-4 py-2.5 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center gap-1.5"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    <span>Przerwa 120s</span>
-                  </button>
-                )}
-              </div>
-
-              <p className="text-xs font-semibold text-[#141414]/80">{currentWorkout.finisher.description}</p>
-
-              <ul className="space-y-1.5 text-xs font-bold text-[#141414] bg-[#FFF6F3] p-3.5 rounded-[22px]">
-                {currentWorkout.finisher.tasks.map((t, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#141414] text-white flex items-center justify-center text-[10px]">
-                      {i + 1}
-                    </span>
-                    <span>{t}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {(finisherTimer.active || finisherTimer.seconds > 0) && (
-                <div className="p-4 rounded-[22px] bg-[#141414] text-white space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-[#F8B4A6]">
-                        {finisherTimer.mode} • Minuta {Math.min(Math.floor(finisherTimer.seconds / 60) + 1, Math.ceil(finisherTimer.totalSeconds / 60))}
-                      </span>
-                      <p className="text-2xl font-extrabold font-mono">
-                        {String(Math.floor((finisherTimer.totalSeconds - finisherTimer.seconds) / 60)).padStart(2, '0')}:
-                        {String((finisherTimer.totalSeconds - finisherTimer.seconds) % 60).padStart(2, '0')}
-                      </p>
-                    </div>
-                    {finisherTimer.mode === 'EMOM' && (
-                      <div className="text-right">
-                        <span className="text-[10px] text-white/60 block">Do nowej minuty</span>
-                        <span className="text-lg font-extrabold font-mono text-[#F8B4A6]">
-                          {60 - (finisherTimer.seconds % 60)}s
-                        </span>
-                      </div>
-                    )}
-                    <button
-                      onClick={() =>
-                        setFinisherTimer({ active: false, seconds: 0, mode: 'EMOM', totalSeconds: 300, startTime: 0 })
-                      }
-                      className="p-2 rounded-full bg-white/15 text-white"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[#F8B4A6] transition-all duration-300 rounded-full"
-                      style={{ width: `${finisherPercent}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="grid sm:grid-cols-3 gap-2">
-                <input
-                  type="text"
-                  placeholder="Wynik (np. 4 rundy)"
-                  value={currentFinisherLog.rounds}
-                  onChange={(e) => updateFinisherLog('rounds', e.target.value)}
-                  className="px-4 py-2.5 rounded-full bg-[#FFF6F3] text-xs font-bold text-[#141414] placeholder:text-[#9A7B74] outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Ciężar / czas"
-                  value={currentFinisherLog.kcalOrTime}
-                  onChange={(e) => updateFinisherLog('kcalOrTime', e.target.value)}
-                  className="px-4 py-2.5 rounded-full bg-[#FFF6F3] text-xs font-bold text-[#141414] placeholder:text-[#9A7B74] outline-none"
-                />
-                <button
-                  onClick={() => updateFinisherLog('completed', !currentFinisherLog.completed)}
-                  className={`px-4 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition ${
-                    currentFinisherLog.completed
-                      ? 'bg-[#141414] text-white'
-                      : 'bg-[#FFF6F3] text-[#141414]'
-                  }`}
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{currentFinisherLog.completed ? 'Zrobione' : 'Zaliczone'}</span>
-                </button>
-              </div>
-            </section>
-          </div>
-        )}
-      </main>
-
-      {/* DOLNA CZARNA PASTYLKA STOPERA Z PŁYNNYM PASKIEM PROGRESU */}
-      <div className="fixed bottom-5 inset-x-4 max-w-sm mx-auto z-40">
-        {bottomTimer.active ? (
-          <div
-            className={`relative overflow-hidden rounded-full pl-5 pr-2 py-2.5 shadow-2xl flex items-center justify-between gap-2 transition-colors ${
-              bottomTimer.remaining <= 3 ? 'bg-[#E0533C] text-white' : 'bg-[#141414] text-white'
-            }`}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setIsConfigOpen(!isConfigOpen)}
+            title="Ustawienia połączenia ze Stravą"
+            className="w-8 h-8 rounded-full bg-white/70 hover:bg-white text-[#141414] flex items-center justify-center shadow-sm"
           >
-            <div
-              className="absolute bottom-0 left-0 h-1 bg-[#F8B4A6] transition-all duration-300"
-              style={{ width: `${bottomTimerPercent}%` }}
-            />
-
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span
-                className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                  bottomTimer.mode === 'WORK' ? 'bg-[#E0533C] text-white' : 'bg-white/15 text-[#F8B4A6]'
-                }`}
-              >
-                {bottomTimer.mode === 'WORK' ? 'TRZYMAJ' : 'PRZERWA'}
-              </span>
-              <span className="text-lg font-extrabold font-mono">
-                {Math.floor(bottomTimer.remaining / 60)}:{String(bottomTimer.remaining % 60).padStart(2, '0')}
-              </span>
-              <span className="text-xs font-semibold text-white/70 truncate">
-                {bottomTimer.label}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => adjustBottomTimer(-15)}
-                className="px-2 py-1 rounded-full bg-white/15 text-[10px] font-bold"
-              >
-                -15s
-              </button>
-              <button
-                onClick={() => adjustBottomTimer(15)}
-                className="px-2 py-1 rounded-full bg-white/15 text-[10px] font-bold"
-              >
-                +15s
-              </button>
-              <button
-                onClick={togglePauseBottomTimer}
-                className="w-7 h-7 rounded-full bg-white/15 text-white flex items-center justify-center"
-              >
-                {bottomTimer.paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-              </button>
-              <button
-                onClick={() => setBottomTimer((prev) => ({ ...prev, active: false, remaining: 0 }))}
-                className="w-7 h-7 rounded-full bg-white text-[#141414] flex items-center justify-center font-bold text-xs"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="relative overflow-hidden bg-[#141414] text-white rounded-full pl-5 pr-2 py-2 shadow-2xl flex items-center justify-between">
-            <div
-              className="absolute bottom-0 left-0 h-1 bg-[#E0533C] transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
-            <div>
-              <span className="text-[11px] font-semibold text-white/60 block">
-                Trening {selectedWorkout} • Tydz. {selectedWeek}
-              </span>
-              <span className="text-sm font-extrabold">
-                {completedMainSets} z {totalMainSets} serii ({progressPercent}%)
-              </span>
-            </div>
-            <button
-              onClick={() => setShowReportModal(true)}
-              className="px-4 py-2 rounded-full bg-white text-[#141414] font-extrabold text-xs flex items-center gap-1.5"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span>Raport {currentWorkoutVideos.length > 0 ? `+ 🎥(${currentWorkoutVideos.length})` : ''}</span>
-            </button>
-          </div>
-        )}
+            <Sliders className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={fetchLatestStravaActivity}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-full bg-[#141414] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>{isLoading ? 'Pobieram...' : 'Pobierz ze Stravy'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* MODAL RAPORTU Z OPCJĄ POBRANIA I WYSŁANIA RAZEM Z FILMIKAMI */}
-      {showReportModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#FFF6F3] rounded-[32px] max-w-md w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-lg text-[#141414]">Raport + Nagrane wideo</h3>
-              <button
-                onClick={() => setShowReportModal(false)}
-                className="w-8 h-8 rounded-full bg-[#F9E5E0] text-[#141414] font-bold text-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            <pre className="p-4 rounded-[22px] bg-[#F9E5E0] text-xs text-[#141414] whitespace-pre-wrap font-mono max-h-60 overflow-y-auto">
-              {generatePawelReport()}
-            </pre>
-
-            {/* Podgląd filmików załączonych do dzisiejszego raportu z opcją usunięcia błędnego */}
-            {currentWorkoutVideos.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-extrabold uppercase tracking-wider text-[#7A625D]">
-                  Załączone filmiki z tego treningu ({currentWorkoutVideos.length}):
-                </p>
-                <div className="space-y-1.5">
-                  {currentWorkoutVideos.map((vid) => (
-                    <div
-                      key={vid.key}
-                      className="flex items-center justify-between bg-[#F9E5E0] px-3 py-2 rounded-full text-xs font-bold"
-                    >
-                      <span className="truncate pr-2">🎥 {vid.exerciseName}</span>
-                      <button
-                        onClick={() => handleDeleteVideo(vid.key)}
-                        title="Usuń ten filmik"
-                        className="p-1.5 rounded-full bg-[#E0533C] text-white shrink-0"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="grid gap-2">
-              {/* Przycisk 1: Udostępnij na telefonie raport + wszystkie pliki MP4 naraz */}
-              <button
-                onClick={handleShareReportWithVideos}
-                className="w-full py-3 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>
-                  Wyślij raport {currentWorkoutVideos.length > 0 ? `+ filmiki (${currentWorkoutVideos.length})` : ''}
-                </span>
-              </button>
-
-              {/* Przycisk 2: Pobierz raport (.txt) + wszystkie filmiki (.mp4) na urządzenie */}
-              <button
-                onClick={handleDownloadReportAndVideos}
-                className="w-full py-3 rounded-full bg-[#F8B4A6] text-[#141414] font-bold text-xs flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>
-                  Pobierz raport {currentWorkoutVideos.length > 0 ? `+ wszystkie filmiki (${currentWorkoutVideos.length})` : '(.txt)'}
-                </span>
-              </button>
-
-              {/* Przycisk 3: Szybkie kopiowanie samego tekstu */}
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(generatePawelReport());
-                  setCopiedReport(true);
-                  setTimeout(() => setCopiedReport(false), 2500);
-                }}
-                className="w-full py-2.5 rounded-full bg-white border border-[#141414]/15 text-[#141414] font-bold text-xs flex items-center justify-center gap-2"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>{copiedReport ? 'Skopiowano sam tekst!' : 'Kopiuj sam tekst raportu'}</span>
-              </button>
-            </div>
+      {/* Formularz konfiguracji tokenu Strava */}
+      {isConfigOpen && (
+        <div className="p-4 rounded-[22px] bg-[#FFF6F3] space-y-2.5 text-xs text-[#141414]">
+          <p className="font-bold">Konfiguracja Strava API (jednorazowo):</p>
+          <p className="text-[11px] text-[#7A625D]">
+            Wygeneruj darmowy token na <strong>strava.com/settings/api</strong> i wklej poniżej:
+          </p>
+          <input
+            type="text"
+            placeholder="Strava Access Token..."
+            value={stravaToken}
+            onChange={(e) => setStravaToken(e.target.value)}
+            className="w-full px-3 py-2 rounded-full bg-white text-xs font-mono outline-none border border-[#F3D5CE]"
+          />
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              onClick={() => setIsConfigOpen(false)}
+              className="px-3 py-1.5 rounded-full bg-[#F9E5E0] font-bold text-xs"
+            >
+              Anuluj
+            </button>
+            <button
+              onClick={saveStravaCredentials}
+              className="px-4 py-1.5 rounded-full bg-[#141414] text-white font-bold text-xs"
+            >
+              Zapisz token
+            </button>
           </div>
         </div>
       )}
 
-      {/* MODAL KOPII ZAPASOWEJ */}
-      {showBackupModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#FFF6F3] rounded-[32px] max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-lg text-[#141414]">Kopia zapasowa</h3>
-              <button
-                onClick={() => setShowBackupModal(false)}
-                className="w-8 h-8 rounded-full bg-[#F9E5E0] text-[#141414] font-bold text-sm"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-xs font-medium text-[#7A625D]">
-              Dane i filmiki zapisują się automatycznie w trwałej pamięci telefonu (nawet po zamknięciu karty).
-            </p>
-            <div className="grid gap-2.5">
-              <button
-                onClick={handleExportBackup}
-                className="w-full py-3 px-4 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Pobierz plik zapasowy (.json)</span>
-              </button>
-              <label className="cursor-pointer w-full py-3 px-4 rounded-full bg-[#F9E5E0] text-[#141414] font-bold text-xs flex items-center justify-center gap-2">
-                <Upload className="w-4 h-4" />
-                <span>Wczytaj plik zapasowy</span>
-                <input type="file" accept="application/json" className="hidden" onChange={handleImportBackup} />
-              </label>
-            </div>
+      {/* 4 Pastelowe Kafelki Wyników z Zegarka (z opcją ręcznej edycji w 3 sekundy) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="bg-[#FFF6F3] p-3 rounded-[20px] flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7A625D]">
+            <span className="text-[10px] font-extrabold uppercase">Czas</span>
+            <Timer className="w-3.5 h-3.5 text-[#141414]" />
+          </div>
+          <div className="flex items-baseline gap-1 mt-1">
+            <input
+              type="number"
+              placeholder="0"
+              value={currentGarminData.durationMinutes}
+              onChange={(e) => updateGarminData({ durationMinutes: e.target.value })}
+              className="w-full text-lg font-black text-[#141414] bg-transparent outline-none"
+            />
+            <span className="text-xs font-bold text-[#7A625D]">min</span>
           </div>
         </div>
-      )}
+
+        <div className="bg-[#FFF6F3] p-3 rounded-[20px] flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7A625D]">
+            <span className="text-[10px] font-extrabold uppercase">Kalorie</span>
+            <Flame className="w-3.5 h-3.5 text-[#E0533C]" />
+          </div>
+          <div className="flex items-baseline gap-1 mt-1">
+            <input
+              type="number"
+              placeholder="0"
+              value={currentGarminData.calories}
+              onChange={(e) => updateGarminData({ calories: e.target.value })}
+              className="w-full text-lg font-black text-[#141414] bg-transparent outline-none"
+            />
+            <span className="text-xs font-bold text-[#7A625D]">kcal</span>
+          </div>
+        </div>
+
+        <div className="bg-[#FFF6F3] p-3 rounded-[20px] flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7A625D]">
+            <span className="text-[10px] font-extrabold uppercase">Śr. Tętno</span>
+            <Heart className="w-3.5 h-3.5 text-[#E0533C]" />
+          </div>
+          <div className="flex items-baseline gap-1 mt-1">
+            <input
+              type="number"
+              placeholder="0"
+              value={currentGarminData.avgHr}
+              onChange={(e) => updateGarminData({ avgHr: e.target.value })}
+              className="w-full text-lg font-black text-[#141414] bg-transparent outline-none"
+            />
+            <span className="text-xs font-bold text-[#7A625D]">bpm</span>
+          </div>
+        </div>
+
+        <div className="bg-[#FFF6F3] p-3 rounded-[20px] flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7A625D]">
+            <span className="text-[10px] font-extrabold uppercase">Max Tętno</span>
+            <Activity className="w-3.5 h-3.5 text-[#E0533C]" />
+          </div>
+          <div className="flex items-baseline gap-1 mt-1">
+            <input
+              type="number"
+              placeholder="0"
+              value={currentGarminData.maxHr}
+              onChange={(e) => updateGarminData({ maxHr: e.target.value })}
+              className="w-full text-lg font-black text-[#141414] bg-transparent outline-none"
+            />
+            <span className="text-xs font-bold text-[#7A625D]">bpm</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
+// Eksport całości
+export { StravaGarminSection };
