@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Dumbbell,
   Play,
   Pause,
   RotateCcw,
   Check,
   Video,
   ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  Trophy,
-  Heart,
   Copy,
-  CheckCircle2,
   Volume2,
   VolumeX,
   Trash2,
@@ -20,21 +14,20 @@ import {
   Download,
   ShieldCheck,
   Smartphone,
-  Sparkles,
   Scale,
   AlertTriangle,
-  HelpCircle,
-  Film,
   Share2,
-  Activity
+  Activity,
+  Timer
 } from 'lucide-react';
 
-// --- BAZA DANYCH PLANU TRENINGOWEGO OD PAWŁA ---
+// --- BAZA DANYCH PLANU TRENINGOWEGO ---
 const WORKOUT_PLAN = {
   1: {
     id: 1,
+    shortTitle: 'Nogi i Core',
     title: 'Trening 1: Nogi i Core',
-    subtitle: 'Smukła siła dolnych partii, stabilizacja i SkiErg EMOM',
+    subtitle: 'Siła dolnych partii • SkiErg EMOM',
     warmup: [
       {
         id: 't1_w1',
@@ -45,12 +38,12 @@ const WORKOUT_PLAN = {
         reps: '15',
         notes: 'Spokojne, kontrolowane ruchy',
         unilateral: false,
-        muscles: 'Mobilność bioder, dwugłowe uda, odcinek piersiowy',
+        muscles: 'Mobilność bioder i dwugłowe',
         activeZones: ['quads', 'glutes', 'hamstrings'],
         cues: [
-          'Złap za czubki butów i zejdź do głębokiego przysiadu z prostymi plecami.',
-          'Rozpychaj kolana łokciami na zewnątrz i otwórz klatkę piersiową.',
-          'Wyprostuj kolana unosząc biodra wysoko w górę bez puszczania stóp.'
+          'Złap czubki butów i zejdź do głębokiego przysiadu z prostymi plecami.',
+          'Rozpychaj kolana łokciami na zewnątrz i otwórz klatkę.',
+          'Wyprostuj kolana unosząc biodra wysoko bez puszczania stóp.'
         ],
         ytQuery: 'deep squat to stand mobility exercise'
       },
@@ -63,12 +56,12 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Na każdą nogę',
         unilateral: true,
-        muscles: 'Przywodziciele, mobilność stawu skokowego i biodra',
+        muscles: 'Przywodziciele i biodra',
         activeZones: ['quads', 'glutes'],
         cues: [
-          'Stań bardzo szeroko i przenieś ciężar ciała na jedną nogę, schodząc nisko.',
-          'Druga noga pozostaje całkowicie prosta, palce stopy skieruj w stronę sufitu.',
-          'Cała stopa nogi pracującej jest przyklejona do podłogi.'
+          'Stań szeroko i przenieś ciężar na jedną nogę, schodząc nisko.',
+          'Druga noga prosta, palce stopy skieruj w sufit.',
+          'Cała stopa nogi pracującej przyklejona do podłogi.'
         ],
         ytQuery: 'cossack squat form technique'
       },
@@ -81,11 +74,11 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Na każdą stronę',
         unilateral: true,
-        muscles: 'Pośladkowy średni i wielki, otwarcie biodra',
+        muscles: 'Aktywacja pośladków',
         activeZones: ['glutes', 'core'],
         cues: [
-          'Aktywuj pośladek w pełnym zakresie ruchu, pilnując stabilnej miednicy.',
-          'Przytrzymaj szczytowe napięcie przez 1 sekundę w każdym powtórzeniu.'
+          'Aktywuj pośladek w pełnym zakresie ruchu, pilnując miednicy.',
+          'Przytrzymaj napięcie przez 1s w każdym powtórzeniu.'
         ],
         ytQuery: 'glute activation warmup mobility'
       },
@@ -98,12 +91,11 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Na każdą stronę',
         unilateral: true,
-        muscles: 'Core – antyrotacja, mięśnie skośne brzucha',
+        muscles: 'Core – antyrotacja',
         activeZones: ['core', 'shoulders'],
         cues: [
-          'Stań bokiem do wyciągu lub gumy zaczepionej na wysokości mostka.',
-          'Wyciśnij uchwyt przed klatkę piersiową i nie pozwól, by guma skręciła Twój tułów.',
-          'Trzymaj żebra ściągnięte w dół i napięte pośladki.'
+          'Stań bokiem do wyciągu lub gumy na wysokości mostka.',
+          'Wyciśnij uchwyt przed klatkę i zablokuj rotację tułowia.'
         ],
         ytQuery: 'pallof press band cable form'
       },
@@ -116,12 +108,11 @@ const WORKOUT_PLAN = {
         reps: '10-15',
         notes: 'Utrzymuj biodra wysoko',
         unilateral: false,
-        muscles: 'Mięśnie dwugłowe uda, pośladki, stabilizacja',
+        muscles: 'Dwugłowe uda i pośladki',
         activeZones: ['hamstrings', 'glutes', 'core'],
         cues: [
-          'Połóż się na plecach, pięty wbij w piłkę gimnastyczną.',
-          'Unieś biodra wysoko i przyciągnij piłkę piętami pod pośladki.',
-          'Nie opuszczaj bioder podczas prostowania nóg.'
+          'Pięty wbij w piłkę gimnastyczną, unieś biodra wysoko.',
+          'Przyciągnij piłkę piętami pod pośladki bez opuszczania bioder.'
         ],
         ytQuery: 'stability ball hamstring curl'
       },
@@ -134,11 +125,11 @@ const WORKOUT_PLAN = {
         reps: '200 m',
         notes: 'Średnie tempo',
         unilateral: false,
-        muscles: 'Całe ciało – podniesienie tętna',
+        muscles: 'Rozgrzewka całego ciała',
         activeZones: ['quads', 'back', 'core'],
         cues: [
-          'Kolejność przyciągania: mocne odepchnięcie nogami -> odchylenie tułowia -> dociągnięcie rąk.',
-          'Powrót: najpierw wyprostuj ręce, pochyl tułów, dopiero na końcu ugnij kolana.'
+          'Odepchnięcie nogami -> odchylenie tułowia -> przyciągnięcie rąk.',
+          'Powrót: wyprost rąk -> pochylenie tułowia -> ugięcie kolan.'
         ],
         ytQuery: 'concept2 rowing technique proper form'
       }
@@ -159,9 +150,9 @@ const WORKOUT_PLAN = {
         muscles: 'Czworogłowe uda, pośladki, core',
         activeZones: ['quads', 'glutes', 'core'],
         cues: [
-          'Trzymaj kettlebell lub hantla pionowo tuż przy mostku, łokcie skierowane w dół.',
-          'Zejdź w dół poniżej kąta prostego w kolanach, utrzymując neutralny kręgosłup.',
-          'Wstawaj dynamicznie, pchając całą powierzchnią stopy w podłogę.'
+          'Trzymaj ciężar pionowo przy mostku, łokcie skierowane w dół.',
+          'Zejdź poniżej kąta prostego w kolanach z prostymi plecami.',
+          'Wstawaj dynamicznie, pchając całą stopą w podłogę.'
         ],
         ytQuery: 'goblet squat proper form dumbbell kettlebell'
       },
@@ -177,11 +168,11 @@ const WORKOUT_PLAN = {
         notes: 'Krążenia talerzem; na stronę',
         unilateral: true,
         barbell: false,
-        muscles: 'Obręcz barkowa, stabilizacja core',
+        muscles: 'Obręcz barkowa, core',
         activeZones: ['shoulders', 'core'],
         cues: [
-          'Złap talerz oburącz i wykonuj ciasne krążenia wokół głowy tuż nad uszami i karkiem.',
-          'Trzymaj brzuch i pośladki mocno spięte – klatka i biodra stoją nieruchomo.'
+          'Złap talerz oburącz i wykonuj ciasne krążenia wokół głowy.',
+          'Brzuch i pośladki mocno spięte – biodra stoją nieruchomo.'
         ],
         ytQuery: 'plate halo exercise form'
       },
@@ -197,12 +188,11 @@ const WORKOUT_PLAN = {
         notes: 'Wykroki chodzone; na nogę',
         unilateral: true,
         barbell: false,
-        muscles: 'Pośladki, czworogłowe uda, równowaga pod Hyrox',
+        muscles: 'Pośladki, czworogłowe uda',
         activeZones: ['quads', 'glutes'],
         cues: [
-          'Stawiaj kroki na szerokość bioder (jak po szynach kolejowych, nie po jednej linii).',
-          'Tylne kolano delikatnie zbliża się do ziemi, przednie kolano stabilne nad stopą.',
-          'Wychodź w górę z przedniej pięty i śródstopia.'
+          'Stawiaj kroki na szerokość bioder.',
+          'Tylne kolano schodzi nisko nad ziemię, wychodź z przedniej pięty.'
         ],
         ytQuery: 'dumbbell walking lunges proper form'
       },
@@ -218,12 +208,11 @@ const WORKOUT_PLAN = {
         notes: 'Martwy ciąg jednonóż; na nogę',
         unilateral: true,
         barbell: false,
-        muscles: 'Dwugłowy uda, pośladek, stabilizacja stawu skokowego',
+        muscles: 'Dwugłowy uda, pośladek',
         activeZones: ['hamstrings', 'glutes', 'back'],
         cues: [
-          'Lekko odblokuj kolano nogi postawnej i cofaj biodro w tył jak przy zamykaniu drzwi pośladkiem.',
-          'Wolna noga unosi się w tył w jednej linii z prostymi plecami.',
-          'Nie otwieraj biodra na bok – oba kolce biodrowe patrzą w podłogę.'
+          'Odblokuj kolano nogi postawnej i cofaj biodro daleko w tył.',
+          'Nie otwieraj biodra na bok – oba kolce biodrowe patrzą w ziemię.'
         ],
         ytQuery: 'single leg kettlebell rdl form'
       },
@@ -239,12 +228,11 @@ const WORKOUT_PLAN = {
         notes: 'Wiatrak; na stronę',
         unilateral: true,
         barbell: false,
-        muscles: 'Mięśnie skośne brzucha, stabilizacja barku, mobilność biodra',
+        muscles: 'Mięśnie skośne, stabilizacja barku',
         activeZones: ['core', 'shoulders', 'glutes'],
         cues: [
-          'Stopy ustaw pod kątem 45 stopni w stronę przeciwną do uniesionego ciężaru.',
-          'Wypchnij biodro w bok nad tylną nogę, zsuwając wolną dłoń po wewnętrznej stronie przedniej nogi.',
-          'Cały czas patrz wzrokiem na ciężar nad głową.'
+          'Stopy pod kątem 45° w stronę przeciwną do uniesionego ciężaru.',
+          'Wypchnij biodro nad tylną nogę, wzrok cały czas na ciężarze.'
         ],
         ytQuery: 'kettlebell windmill tutorial form'
       },
@@ -255,17 +243,18 @@ const WORKOUT_PLAN = {
         equipment: 'bench',
         sets: 3,
         reps: '20-30s',
+        timedSeconds: 30,
         targetMaxReps: 30,
         rest: 0,
         notes: 'Superseria z A2; na stronę',
         unilateral: true,
         barbell: false,
-        superset: 'A1 -> od razu przejdź do A2 (0s przerwy)',
-        muscles: 'Przywodziciele uda, mięśnie skośne brzucha',
+        superset: 'A1 • 0s przerwy',
+        muscles: 'Przywodziciele uda, core',
         activeZones: ['core', 'quads'],
         cues: [
-          'Oprzyj się na przedramieniu bokiem, górną nogę oprzyj na ławce.',
-          'Unieś biodra tak, aby ciało tworzyło jedną prostą linię i utrzymaj izometrycznie 20-30s.'
+          'Podpór bokiem na przedramieniu, górna noga na ławce.',
+          'Utrzymaj biodra wysoko w jednej linii przez 20-30s.'
         ],
         ytQuery: 'copenhagen plank adduction exercise'
       },
@@ -281,28 +270,29 @@ const WORKOUT_PLAN = {
         notes: 'Przywodzenie; na stronę',
         unilateral: true,
         barbell: false,
-        superset: 'A2 -> po wykonaniu obu stron 60s przerwy',
+        superset: 'A2 • 60s przerwy',
         muscles: 'Przywodziciele uda',
         activeZones: ['quads', 'core'],
         cues: [
-          'Połóż się na boku, górną nogę postaw przed sobą, a dolną prostą unoś jak najwyżej w górę.',
-          'Kontroluj ruch opuszczania przez 2 sekundy.'
+          'Leżąc na boku unoś dolną, wyprostowaną nogę jak najwyżej.',
+          'Kontroluj opuszczanie przez 2 sekundy.'
         ],
         ytQuery: 'side lying hip adduction exercise'
       }
     ],
     finisher: {
       type: 'EMOM',
-      title: 'Finisher: EMOM 5 minut (SkiErg)',
+      title: 'Finisher: EMOM 5 min (SkiErg)',
       durationMinutes: 5,
-      description: 'W każdej minucie wykonaj 4 kcal na SkiErg. Pracujesz maksymalnie 60 sekund w rundzie (jeśli skończysz szybciej, reszta minuty to Twoja przerwa).',
-      tasks: ['4 kcal na SkiErg w każdej rozpoczętej minucie (5 rund)']
+      description: 'W każdej minucie wykonaj 4 kcal na SkiErg. Reszta minuty to Twoja przerwa.',
+      tasks: ['4 kcal na SkiErg co minutę (5 rund)']
     }
   },
   2: {
     id: 2,
+    shortTitle: 'Góra Ciała',
     title: 'Trening 2: Góra Ciała',
-    subtitle: 'Smukła góra, pośladki + obwody kondycyjne',
+    subtitle: 'Siła góry, pośladki • 2 Obwody',
     warmup: [
       {
         id: 't2_w1',
@@ -313,11 +303,11 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Na każdą stronę',
         unilateral: true,
-        muscles: 'Rotacja odcinka piersiowego kręgosłupa',
+        muscles: 'Rotacja odcinka piersiowego',
         activeZones: ['back', 'shoulders'],
         cues: [
-          'W klęku podpartym wsuń jedną rękę pod pachą drugiej, kładąc bark i skroń na macie.',
-          'Następnie otwórz klatkę wysoko do sufitu, prowadząc wzrok za dłonią.'
+          'W klęku podpartym wsuń rękę pod pachą drugiej, kładąc bark na macie.',
+          'Otwórz klatkę wysoko do sufitu, prowadząc wzrok za dłonią.'
         ],
         ytQuery: 'thread the needle thoracic mobility'
       },
@@ -330,11 +320,11 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Z użyciem kijka (stick)',
         unilateral: false,
-        muscles: 'Najszerszy grzbietu, mobilność barków nad głową',
+        muscles: 'Mobilność najszerszego i barków',
         activeZones: ['back', 'shoulders'],
         cues: [
           'Złap kijek podchwytem, oprzyj łokcie na ławce i cofnij biodra do pięt.',
-          'Opuść klatkę piersiową w dół między ramiona, rozciągając boki pleców.'
+          'Opuść klatkę między ramiona.'
         ],
         ytQuery: 'kneeling lat stretch bench dowel'
       },
@@ -347,11 +337,11 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Na każdą stronę',
         unilateral: true,
-        muscles: 'Rotacja wewnętrzna i zewnętrzna bioder',
+        muscles: 'Rotacja bioder',
         activeZones: ['glutes'],
         cues: [
-          'Usiądź z obiema nogami ugiętymi pod kątem 90 stopni.',
-          'Przekładaj kolana płynnie z jednej strony na drugą, trzymając wyprostowany tułów.'
+          'Usiądź z nogami ugiętymi pod kątem 90 stopni.',
+          'Przekładaj kolana płynnie ze strony na stronę z prostym tułowiem.'
         ],
         ytQuery: '90 90 hip switch mobility'
       },
@@ -364,11 +354,11 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Aktywne zwisy na drążku',
         unilateral: false,
-        muscles: 'Dolny czworoboczny, aktywacja łopatek',
+        muscles: 'Aktywacja łopatek',
         activeZones: ['back', 'shoulders'],
         cues: [
-          'Zawiśnij na drążku na całkowicie prostych łokciach.',
-          'Bez uginania ramion ściągnij łopatki mocno w dół (oddal barki od uszu) i przytrzymaj.'
+          'Zawiśnij na drążku na prostych łokciach.',
+          'Ściągnij same łopatki mocno w dół, oddalając barki od uszu.'
         ],
         ytQuery: 'scapular pull ups technique'
       },
@@ -381,11 +371,10 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Płynne przejścia',
         unilateral: false,
-        muscles: 'Mobilność całego kręgosłupa (Cat-Cow)',
+        muscles: 'Mobilność kręgosłupa',
         activeZones: ['back', 'core'],
         cues: [
-          'Z wydechem zaokrąglij mocno plecy chowając głowę i podwijając miednicę.',
-          'Z wdechem powoli otwórz klatkę piersiową do przodu.'
+          'Z wydechem zaokrąglij plecy, z wdechem otwórz klatkę do przodu.'
         ],
         ytQuery: 'cat cow stretch spine mobility'
       }
@@ -403,12 +392,11 @@ const WORKOUT_PLAN = {
         notes: 'Wyciskanie leżąc na ławce',
         unilateral: false,
         barbell: true,
-        muscles: 'Klatka piersiowa, przedni akton barku, triceps',
+        muscles: 'Klatka, barki, triceps',
         activeZones: ['chest', 'shoulders', 'arms'],
         cues: [
-          'Ściągnij łopatki razem i w dół wbijając je w ławkę, stopy wbij stabilnie w podłogę.',
-          'Opuszczaj sztangę pod kontrolą na dolną część mostka (łokcie pod kątem ok. 45-60°).',
-          'Wyciskaj dynamicznie w górę bez odrywania pośladków od ławki.'
+          'Ściągnij łopatki wbijając je w ławkę, stopy stabilnie na ziemi.',
+          'Opuszczaj sztangę na dolną część mostka i wyciskaj dynamicznie.'
         ],
         ytQuery: 'barbell bench press proper form'
       },
@@ -424,11 +412,11 @@ const WORKOUT_PLAN = {
         notes: 'Wiosłowanie; na stronę',
         unilateral: true,
         barbell: false,
-        muscles: 'Najszerszy grzbietu, czworoboczny, stabilizacja tułowia',
+        muscles: 'Najszerszy grzbietu, core',
         activeZones: ['back', 'arms', 'core'],
         cues: [
-          'Stań w szerokim rozkroku nad dwoma kettlebellami w pozycji hip hinge (proste plecy).',
-          'Jedna ręka mocno wciska uchwyt pierwszego KB w ziemię, podczas gdy druga wiosłuje do biodra.'
+          'Szeroki rozkrok nad dwoma KB, proste plecy w opadzie.',
+          'Jedna ręka wciska KB w ziemię, druga wiosłuje łokciem do biodra.'
         ],
         ytQuery: 'kettlebell gorilla row form'
       },
@@ -444,11 +432,11 @@ const WORKOUT_PLAN = {
         notes: 'Pełen wyprost bioder, dopięcie',
         unilateral: false,
         barbell: true,
-        muscles: 'Mięśnie pośladkowe, dwugłowe uda',
+        muscles: 'Pośladki, dwugłowe uda',
         activeZones: ['glutes', 'hamstrings'],
         cues: [
-          'Oprzyj dolny kąt łopatek o krawędź ławki, wzrok skieruj przed siebie (broda przyciągnięta).',
-          'W górze piszczele mają być pionowo (kąt 90° w kolanach) – przytrzymaj mocne dopięcie pośladków przez 1-2s.'
+          'Oprzyj dół łopatek o ławkę, broda przyciągnięta do mostka.',
+          'W górze piszczele pionowo – przytrzymaj dopięcie pośladków 1-2s.'
         ],
         ytQuery: 'barbell hip thrust technique'
       },
@@ -464,11 +452,11 @@ const WORKOUT_PLAN = {
         notes: 'Wznosy bokiem; mniejszy ciężar',
         unilateral: false,
         barbell: false,
-        muscles: 'Boczny akton mięśni naramiennych (barki)',
+        muscles: 'Boczny akton barku',
         activeZones: ['shoulders'],
         cues: [
-          'Unoś hantle lekko po skosie przed sobą (w płaszczyźnie łopatki), jakbyś chciała sięgnąć nimi daleko do ścian.',
-          'Nie bujaj tułowiem – pełna kontrola przy wysokich 20 powtórzeniach.'
+          'Unoś hantle lekko po skosie przed sobą do wysokości barków.',
+          'Zero bujania tułowiem.'
         ],
         ytQuery: 'dumbbell lateral raise proper form'
       },
@@ -487,8 +475,8 @@ const WORKOUT_PLAN = {
         muscles: 'Pośladek, czworogłowy uda',
         activeZones: ['glutes', 'quads'],
         cues: [
-          'Postaw całą stopę na skrzyni, pochyl lekko tułów i wejdź w górę wyłącznie siłą nogi górnej.',
-          'Nie odbijaj się z palców nogi stojącej na podłodze i schodź w dół bardzo powoli (2-3s).'
+          'Pochyl lekko tułów i wchodź wyłącznie siłą nogi postawionej na skrzyni.',
+          'Opuszczaj się pod kontrolą przez 2-3 sekundy.'
         ],
         ytQuery: 'dumbbell box step up glute quad form'
       },
@@ -504,12 +492,11 @@ const WORKOUT_PLAN = {
         notes: 'Superseria z A2',
         unilateral: false,
         barbell: true,
-        superset: 'A1 -> po zakończeniu od razu przejdź do A2 (0s przerwy)',
-        muscles: 'Mięsień dwugłowy ramienia (biceps)',
+        superset: 'A1 • 0s przerwy',
+        muscles: 'Biceps',
         activeZones: ['arms'],
         cues: [
-          'Trzymaj łokcie przyklejone do boków tułowia przez cały zakres ruchu.',
-          'Opuszczaj sztangę do pełnego wyprostu bez bujania plecami.'
+          'Łokcie przyklejone do boków tułowia, pełny zakres ruchu.'
         ],
         ytQuery: 'barbell bicep curl proper form'
       },
@@ -525,12 +512,11 @@ const WORKOUT_PLAN = {
         notes: 'Prostowanie z wyciągu',
         unilateral: false,
         barbell: false,
-        superset: 'A2 -> po zakończeniu 60s przerwy przed kolejną superserią',
-        muscles: 'Mięsień trójgłowy ramienia (triceps)',
+        superset: 'A2 • 60s przerwy',
+        muscles: 'Triceps',
         activeZones: ['arms'],
         cues: [
-          'Zablokuj łokcie nieruchomo przy żebrach i prostuj przedramiona do końca.',
-          'Na samym dole rozdziel końcówki sznura na zewnątrz, mocno dopinając triceps.'
+          'Zablokuj łokcie przy żebrach, na dole rozdziel końcówki sznura na boki.'
         ],
         ytQuery: 'tricep rope pushdown form'
       },
@@ -546,33 +532,34 @@ const WORKOUT_PLAN = {
         notes: 'Dociskaj lędźwie do maty',
         unilateral: false,
         barbell: false,
-        muscles: 'Głębokie mięśnie brzucha (core)',
+        muscles: 'Głęboki core',
         activeZones: ['core'],
         cues: [
-          'Przez cały czas trwania serii odcinek lędźwiowy musi być na 100% wklejony w matę (zero szpary pod plecami).',
-          'Wyciągaj powoli przeciwległą rękę i nogę tuż nad podłogę z długim wydechem.'
+          'Odcinek lędźwiowy na 100% wklejony w matę przez całą serię.',
+          'Wyciągaj powoli przeciwległą rękę i nogę z wydechem.'
         ],
         ytQuery: 'dead bug core exercise proper form'
       }
     ],
     finisher: {
       type: 'CIRCUIT',
-      title: 'Finisher: 2 Obwody (120s przerwy między obwodami)',
+      title: 'Finisher: 2 Obwody (120s przerwy)',
       restBetweenRounds: 120,
       rounds: 2,
-      description: 'Wykonaj wszystkie 4 ćwiczenia jedno po drugim w pełnym skupieniu technicznym, następnie odpocznij 120 sekund i powtórz drugi obwód.',
+      description: 'Wykonaj 4 ćwiczenia pod rząd, odpocznij 120s i powtórz 2. obwód.',
       tasks: [
         'Cossack squat TRX – 15 powt. na stronę',
         'Russian kettlebell swing – 15 powt.',
         'Burpees w miejscu – 10 powt.',
-        'Single leg calf raises (wspięcia na łydki) – 10 powt. na nogę'
+        'Single leg calf raises – 10 powt. na nogę'
       ]
     }
   },
   3: {
     id: 3,
+    shortTitle: 'Full Body',
     title: 'Trening 3: Full Body Workout',
-    subtitle: 'Całe ciało + kondycyjny AMRAP 6 minut pod Hyrox',
+    subtitle: 'Całe ciało • AMRAP 6 min',
     warmup: [
       {
         id: 't3_w1',
@@ -583,11 +570,10 @@ const WORKOUT_PLAN = {
         reps: '5',
         notes: 'Na każdą stronę',
         unilateral: true,
-        muscles: 'Kompleksowa mobilność bioder, klatki i tylnej taśmy',
+        muscles: 'Kompleksowa mobilność',
         activeZones: ['glutes', 'back', 'hamstrings'],
         cues: [
-          'Zrób głęboki wykrok w przód, sięgnij łokciem do kostki przedniej nogi.',
-          'Następnie otwórz klatkę z rotacją ręki do sufitu i wyprostuj przednie kolano.'
+          'Głęboki wykrok, łokieć do kostki, następnie rotacja ręki do sufitu.'
         ],
         ytQuery: 'worlds greatest stretch mobility'
       },
@@ -600,11 +586,10 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Na każdą stronę; stabilny tułów',
         unilateral: true,
-        muscles: 'Stabilizacja kręgosłupa, pośladek',
+        muscles: 'Stabilizacja core i pośladek',
         activeZones: ['core', 'glutes', 'back'],
         cues: [
-          'W klęku podpartym wyciągnij przeciwległą rękę i nogę w jednej linii z tułowiem.',
-          'Wyobraź sobie, że na lędźwiach stoi kubek z wodą – miednica ani drgnie.'
+          'Wyciągnij przeciwległą rękę i nogę bez poruszania miednicą.'
         ],
         ytQuery: 'bird dog exercise proper form'
       },
@@ -617,11 +602,10 @@ const WORKOUT_PLAN = {
         reps: '15',
         notes: 'Rozciąganie gumy przed sobą',
         unilateral: false,
-        muscles: 'Tylny akton barku, mięśnie międzyłopatkowe',
+        muscles: 'Tylny akton barku i łopatki',
         activeZones: ['shoulders', 'back'],
         cues: [
-          'Trzymaj gumę przed klatką na prostych łokciach i rozciągaj ją do boków, ściskając łopatki.',
-          'Nie unoś barków do uszu.'
+          'Proste łokcie, rozciągaj gumę do klatki ściskając łopatki.'
         ],
         ytQuery: 'band pull aparts proper form'
       },
@@ -634,11 +618,10 @@ const WORKOUT_PLAN = {
         reps: '10 m',
         notes: 'W przód i w tył',
         unilateral: false,
-        muscles: 'Core, stabilizacja barków, czworogłowe',
+        muscles: 'Core i obręcz barkowa',
         activeZones: ['core', 'shoulders', 'quads'],
         cues: [
-          'Unieś kolana na 2-3 cm nad ziemię i poruszaj się naprzemiennie (lewa ręka + prawa noga).',
-          'Trzymaj biodra nisko na wysokości barków.'
+          'Kolana 3 cm nad ziemią, krótkie kroki naprzemienne z prostymi plecami.'
         ],
         ytQuery: 'bear crawl exercise technique'
       },
@@ -651,11 +634,10 @@ const WORKOUT_PLAN = {
         reps: '10',
         notes: 'Z 2-sekundową pauzą na dole',
         unilateral: false,
-        muscles: 'Rozgrzanie stawów skokowych, kolan i bioder',
+        muscles: 'Mobilność bioder i kolan',
         activeZones: ['quads', 'glutes'],
         cues: [
-          'Zejdź do pełnego przysiadu i zatrzymaj ruch na pełne 2 sekundy na dole, utrzymując napięcie.',
-          'Wstań dynamicznie w górę.'
+          'Zatrzymaj ruch na pełne 2 sekundy na dole przysiadu.'
         ],
         ytQuery: 'air squat pause proper form'
       }
@@ -673,11 +655,10 @@ const WORKOUT_PLAN = {
         notes: 'Rumuński MC; proste plecy',
         unilateral: false,
         barbell: false,
-        muscles: 'Dwugłowe uda, pośladki, prostowniki grzbietu',
+        muscles: 'Dwugłowe uda, pośladki',
         activeZones: ['hamstrings', 'glutes', 'back'],
         cues: [
-          'Odblokuj lekko kolana i prowadź hantle/kettle blisko ud i piszczeli, wypychając biodra daleko w tył.',
-          'Zatrzymaj ruch w momencie, gdy biodra przestają cofać się w tył (zazwyczaj w połowie piszczeli).'
+          'Prowadź ciężar blisko nóg wypychając biodra daleko w tył.'
         ],
         ytQuery: 'dumbbell romanian deadlift proper form'
       },
@@ -693,11 +674,10 @@ const WORKOUT_PLAN = {
         notes: 'Wyciskanie hantli siedząc',
         unilateral: false,
         barbell: false,
-        muscles: 'Obręcz barkowa, triceps',
+        muscles: 'Barki, triceps',
         activeZones: ['shoulders', 'arms'],
         cues: [
-          'Oprzyj plecy stabilnie o ławkę, łokcie prowadź lekko przed linią ciała (nie całkowicie na boki).',
-          'Wyciskaj hantle pionowo nad głowę do pełnego wyprostu.'
+          'Plecy stabilnie na oparciu, łokcie lekko przed linią tułowia.'
         ],
         ytQuery: 'seated dumbbell shoulder press form'
       },
@@ -713,11 +693,10 @@ const WORKOUT_PLAN = {
         notes: 'Ściąganie drążka do klatki',
         unilateral: false,
         barbell: false,
-        muscles: 'Najszerszy grzbietu, biceps',
+        muscles: 'Najszerszy grzbietu',
         activeZones: ['back', 'arms'],
         cues: [
-          'Zacznij ruch od ściągnięcia łopatek w dół, a następnie ciągnij łokcie w stronę bioder, prowadząc drążek do górnej części mostka.',
-          'Kontroluj powrót drążka w górę, czując rozciągnięcie pleców.'
+          'Zacznij od ściągnięcia łopatek w dół, prowadź drążek do mostka.'
         ],
         ytQuery: 'lat pulldown proper form'
       },
@@ -733,11 +712,10 @@ const WORKOUT_PLAN = {
         notes: 'Przysiad bułgarski; na nogę',
         unilateral: true,
         barbell: false,
-        muscles: 'Pośladek, czworogłowy uda, stabilizacja',
+        muscles: 'Pośladek, czworogłowy uda',
         activeZones: ['glutes', 'quads'],
         cues: [
-          'Oprzyj grzbiet tylnej stopy na ławce, ciężar ciała w 90% spoczywa na nodze przedniej.',
-          'Pochyl lekko tułów do przodu (bardziej zaangażujesz pośladek) i schodź tylnym kolanem w dół.'
+          '90% ciężaru na nodze przedniej, lekko pochylony tułów.'
         ],
         ytQuery: 'bulgarian split squat form'
       },
@@ -753,11 +731,10 @@ const WORKOUT_PLAN = {
         notes: 'Z rotacją zewnętrzną ramion',
         unilateral: false,
         barbell: false,
-        muscles: 'Tylny akton barku, stożek rotatorów, zdrowie barków',
+        muscles: 'Tylny akton barku, rotatory',
         activeZones: ['shoulders', 'back'],
         cues: [
-          'Ustaw wyciąg na wysokości oczu i ciągnij sznur w stronę czoła.',
-          'Rozszerzaj dłonie tak, aby na końcu ruchu kciuki były skierowane za głowę (pozycja podwójnego bicepsa).'
+          'Ciągnij sznur w stronę czoła, kciuki rotuj za głowę.'
         ],
         ytQuery: 'face pull proper form cable'
       },
@@ -768,16 +745,16 @@ const WORKOUT_PLAN = {
         equipment: 'none',
         sets: 3,
         reps: '40-60s',
+        timedSeconds: 60,
         targetMaxReps: 60,
         rest: 60,
         notes: 'Deska klasyczna',
         unilateral: false,
         barbell: false,
-        muscles: 'Cały gorset mięśniowy core',
+        muscles: 'Core',
         activeZones: ['core', 'shoulders'],
         cues: [
-          'Oprzyj się na przedramionach, podwiń miednicę pod siebie i mocno zepnij pośladki oraz uda.',
-          'Wypychaj się z przedramion i przyciągaj izometrycznie łokcie w stronę palców stóp.'
+          'Podwiń miednicę, mocno zepnij pośladki i brzuch.'
         ],
         ytQuery: 'plank proper form core'
       },
@@ -793,37 +770,34 @@ const WORKOUT_PLAN = {
         notes: 'Ciężkie hantle/KB w dłoniach',
         unilateral: false,
         barbell: false,
-        muscles: 'Chwyt, czworoboczny, stabilizacja core pod Hyrox Farmers Carry',
+        muscles: 'Chwyt, core, czworoboczny',
         activeZones: ['core', 'shoulders', 'quads'],
         cues: [
-          'Weź ciężkie kettle lub hantle, ściągnij barki w dół i lekko w tył („dumna klatka”).',
-          'Idź szybkimi, krótkimi, stabilnymi krokami bez kołysania tułowiem na boki.'
+          'Barki ściągnięte w dół, szybkie i krótkie kroki bez kołysania.'
         ],
         ytQuery: 'farmers walk proper form'
       }
     ],
     finisher: {
       type: 'AMRAP',
-      title: 'Finisher: AMRAP 6 minut',
+      title: 'Finisher: AMRAP 6 min',
       durationMinutes: 6,
-      description: 'Wykonaj jak najwięcej obwodów w 6 minut. Zapisz wynik (pełne rundy + dodatkowe powtórzenia)!',
+      description: 'Zrób jak najwięcej obwodów w 6 minut i zapisz wynik.',
       tasks: [
-        '10x Wall Ball (lub DB Thrusters z lekkim ciężarem)',
-        '10x Box jumps (wskoki na skrzynię lub szybkie wejścia)',
+        '10x Wall Ball (lub DB Thrusters)',
+        '10x Box jumps (wskoki lub wejścia)',
         '150m na wioślarzu (Ergometr)'
       ]
     }
   }
 };
 
-// --- KOBIECY, JASNY SYMULATOR SYLWETKI 2D (PASTEL STUDIO AESTHETIC) ---
+// --- SYMULATOR RUCHU W KOLORYSTYCE PEACH / CORAL & BLACK ---
 function AnatomicalExerciseAnimator({ exercise }) {
   const [phase, setPhase] = useState(0);
   const [slowMo, setSlowMo] = useState(false);
-  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (paused) return;
     let frameId;
     let start = performance.now();
     const duration = slowMo ? 4400 : 2200;
@@ -838,18 +812,17 @@ function AnatomicalExerciseAnimator({ exercise }) {
 
     frameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frameId);
-  }, [slowMo, paused]);
+  }, [slowMo]);
 
   const lerp = (a, b, t) => a + (b - a) * t;
   const zones = exercise.activeZones || [];
   const isActive = (z) => zones.includes(z);
 
-  // Ciepła, kobieca paleta barw w animacji
-  const skinColor = '#f5cba7';
-  const skinBackColor = '#e5b28a';
-  const activeMuscleColor = '#e11d48'; // Głęboki róż malinowy dla pracujących mięśni
-  const outfitTop = '#f472b6'; // Pastelowy różowy top sportowy
-  const outfitShorts = '#9d174d'; // Burgundowo-wrzosowe spodenki
+  const skinColor = '#F3C6B6';
+  const skinBackColor = '#E2B1A0';
+  const activeMuscleColor = '#E0533C';
+  const outfitTop = '#141414';
+  const outfitShorts = '#141414';
 
   let pose = {
     head: { x: 130, y: 46 },
@@ -861,8 +834,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
     ankleBack: { x: 116, y: 204 },
     elbow: { x: 145, y: 100 },
     wrist: { x: 158, y: 88 },
-    propType: exercise.equipment || 'none',
-    phaseLabel: phase < 0.3 ? 'Pozycja wyjściowa' : phase > 0.7 ? 'Szczytowe napięcie (RIR 2)' : 'Płynna kontrola ruchu'
+    phaseLabel: phase < 0.3 ? 'Start' : phase > 0.7 ? 'Spięcie (RIR 2)' : 'Praca'
   };
 
   const t = phase;
@@ -883,11 +855,10 @@ function AnatomicalExerciseAnimator({ exercise }) {
         ankleBack: { x: 124, y: 202 },
         elbow: { x: lerp(142, 146, t), y: 98 + drop * 0.85 },
         wrist: { x: lerp(152, 155, t), y: 82 + drop * 0.85 },
-        phaseLabel: t > 0.65 ? 'Dół przysiadu (poniżej 90°)' : t < 0.25 ? 'Pełny wyprost bioder' : 'Kontrolowane zejście'
+        phaseLabel: t > 0.65 ? 'Dół przysiadu' : 'Wyprost'
       };
       break;
     }
-
     case 'lunge': {
       const drop = lerp(0, 32, t);
       pose = {
@@ -901,11 +872,10 @@ function AnatomicalExerciseAnimator({ exercise }) {
         ankleBack: { x: 84, y: 204 },
         elbow: { x: 130, y: 102 + drop },
         wrist: { x: 132, y: 128 + drop },
-        phaseLabel: t > 0.65 ? 'Kolano blisko ziemi (stabilne biodro)' : 'Wyjście z przedniej pięty'
+        phaseLabel: t > 0.65 ? 'Zejście w dół' : 'Góra z przedniej pięty'
       };
       break;
     }
-
     case 'rdl':
     case 'hinge_row': {
       const isRow = exercise.animType === 'hinge_row';
@@ -928,17 +898,10 @@ function AnatomicalExerciseAnimator({ exercise }) {
           x: isRow ? lerp(158, 144, rowPull) : lerp(134, 154, hinge),
           y: isRow ? lerp(162, 124, rowPull) : lerp(128, 166, hinge)
         },
-        phaseLabel: isRow
-          ? t > 0.6
-            ? 'Mocne dociągnięcie łokcia do biodra'
-            : 'Stabilny opad tułowia (Hip Hinge)'
-          : t > 0.6
-          ? 'Rozciągnięcie dwugłowych (proste plecy!)'
-          : 'Dynamiczny wyprost biodra'
+        phaseLabel: isRow ? 'Wiosłowanie do biodra' : 'Hip Hinge (proste plecy)'
       };
       break;
     }
-
     case 'single_rdl': {
       pose = {
         ...pose,
@@ -951,11 +914,10 @@ function AnatomicalExerciseAnimator({ exercise }) {
         ankleBack: { x: lerp(118, 52, t), y: lerp(204, 122, t) },
         elbow: { x: lerp(132, 156, t), y: lerp(102, 136, t) },
         wrist: { x: lerp(134, 156, t), y: lerp(128, 166, t) },
-        phaseLabel: t > 0.6 ? 'Waga w linii tułów – tylna noga' : 'Równowaga jednonóż'
+        phaseLabel: 'Waga jednonóż'
       };
       break;
     }
-
     case 'windmill': {
       pose = {
         ...pose,
@@ -968,11 +930,10 @@ function AnatomicalExerciseAnimator({ exercise }) {
         ankleBack: { x: 104, y: 204 },
         elbow: { x: lerp(130, 152, t), y: lerp(44, 66, t) },
         wrist: { x: lerp(130, 152, t), y: lerp(18, 36, t) },
-        phaseLabel: t > 0.6 ? 'Wypchnięcie biodra, wzrok na ciężarze' : 'Stabilizacja ciężaru nad głową'
+        phaseLabel: 'Wzrok na ciężarze'
       };
       break;
     }
-
     case 'bench_press': {
       pose = {
         ...pose,
@@ -985,11 +946,10 @@ function AnatomicalExerciseAnimator({ exercise }) {
         ankleBack: { x: 180, y: 198 },
         elbow: { x: lerp(96, 94, t), y: lerp(112, 152, t) },
         wrist: { x: 96, y: lerp(78, 122, t) },
-        phaseLabel: t > 0.6 ? 'Sztanga przy mostku (łopatki wbite)' : 'Dynamiczne wyciśnięcie w górę'
+        phaseLabel: t > 0.6 ? 'Sztanga do mostka' : 'Wyciśnięcie'
       };
       break;
     }
-
     case 'hip_thrust': {
       const hipY = lerp(164, 124, t);
       pose = {
@@ -1003,11 +963,10 @@ function AnatomicalExerciseAnimator({ exercise }) {
         ankleBack: { x: 172, y: 198 },
         elbow: { x: 118, y: lerp(144, 122, t) },
         wrist: { x: 138, y: hipY - 6 },
-        phaseLabel: t > 0.65 ? 'Pełny wyprost i mocne dopięcie pośladków!' : 'Kontrolowane opuszczenie bioder'
+        phaseLabel: t > 0.65 ? 'Dopięcie pośladków' : 'Opuszczenie bioder'
       };
       break;
     }
-
     case 'overhead':
     case 'pull_vertical': {
       const isPull = exercise.animType === 'pull_vertical';
@@ -1023,17 +982,10 @@ function AnatomicalExerciseAnimator({ exercise }) {
         ankleBack: { x: 120, y: 204 },
         elbow: { x: lerp(146, 134, armT), y: lerp(104, 52, armT) },
         wrist: { x: lerp(146, 132, armT), y: lerp(78, 22, armT) },
-        phaseLabel: isPull
-          ? t > 0.6
-            ? 'Ściągnięcie łopatek i łokci w dół'
-            : 'Pełne rozciągnięcie najszerszego grzbietu'
-          : t > 0.6
-          ? 'Pełny wyprost nad głową (brzuch spięty)'
-          : 'Pozycja na wysokości brody'
+        phaseLabel: isPull ? 'Ściągnięcie łopatek' : 'Wyciskanie nad głowę'
       };
       break;
     }
-
     case 'lateral_raise':
     case 'arm_curl':
     case 'tricep_pushdown':
@@ -1041,7 +993,6 @@ function AnatomicalExerciseAnimator({ exercise }) {
       const mode = exercise.animType;
       let elbowPos = { x: 132, y: 106 };
       let wristPos = { x: 158, y: 106 };
-
       if (mode === 'arm_curl') {
         wristPos = { x: lerp(138, 152, t), y: lerp(136, 82, t) };
       } else if (mode === 'tricep_pushdown') {
@@ -1053,16 +1004,9 @@ function AnatomicalExerciseAnimator({ exercise }) {
         elbowPos = { x: lerp(138, 154, t), y: 92 };
         wristPos = { x: lerp(148, 184, t), y: 88 };
       }
-
-      pose = {
-        ...pose,
-        elbow: elbowPos,
-        wrist: wristPos,
-        phaseLabel: t > 0.65 ? 'Szczytowe dopięcie (utrzymaj 1s)' : 'Kontrolowany powrót'
-      };
+      pose = { ...pose, elbow: elbowPos, wrist: wristPos, phaseLabel: 'Kontrola napięcia' };
       break;
     }
-
     case 'plank_side':
     case 'quadruped':
     case 'ball_curl':
@@ -1080,22 +1024,21 @@ function AnatomicalExerciseAnimator({ exercise }) {
           ankleBack: { x: 164, y: 144 },
           elbow: { x: lerp(90, 58, t), y: lerp(148, 168, t) },
           wrist: { x: lerp(92, 34, t), y: lerp(124, 172, t) },
-          phaseLabel: 'Lędźwie wklejone na 100% w matę!'
+          phaseLabel: 'Lędźwie dociśnięte'
         };
       } else if (mode === 'ball_curl') {
-        const curl = t;
         pose = {
           ...pose,
           head: { x: 64, y: 182 },
           shoulder: { x: 88, y: 182 },
-          hip: { x: 136, y: lerp(156, 142, curl) },
-          kneeFront: { x: lerp(176, 158, curl), y: lerp(144, 118, curl) },
-          ankleFront: { x: lerp(212, 178, curl), y: 152 },
-          kneeBack: { x: lerp(174, 156, curl), y: lerp(144, 118, curl) },
-          ankleBack: { x: lerp(210, 176, curl), y: 152 },
+          hip: { x: 136, y: lerp(156, 142, t) },
+          kneeFront: { x: lerp(176, 158, t), y: lerp(144, 118, t) },
+          ankleFront: { x: lerp(212, 178, t), y: 152 },
+          kneeBack: { x: lerp(174, 156, t), y: lerp(144, 118, t) },
+          ankleBack: { x: lerp(210, 176, t), y: 152 },
           elbow: { x: 108, y: 186 },
           wrist: { x: 132, y: 188 },
-          phaseLabel: t > 0.6 ? 'Przyciągnij piłkę piętami (biodra wysoko!)' : 'Kontrolowany wyprost nóg'
+          phaseLabel: 'Biodra wysoko'
         };
       } else if (mode === 'quadruped') {
         pose = {
@@ -1109,7 +1052,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
           ankleBack: { x: lerp(74, 32, t), y: lerp(196, 124, t) },
           elbow: { x: lerp(154, 184, t), y: lerp(160, 122, t) },
           wrist: { x: lerp(154, 212, t), y: lerp(192, 120, t) },
-          phaseLabel: 'Stabilny tułów i płynny zakres ruchu'
+          phaseLabel: 'Stabilny core'
         };
       } else {
         const lift = lerp(0, -6, t);
@@ -1124,14 +1067,11 @@ function AnatomicalExerciseAnimator({ exercise }) {
           ankleBack: { x: 210, y: lerp(194, 176, t) },
           elbow: { x: 88, y: 188 },
           wrist: { x: 112, y: 190 },
-          phaseLabel: 'Ciało w jednej linii – mocno spięty brzuch i przywodziciele'
+          phaseLabel: 'Izometria'
         };
       }
       break;
     }
-
-    case 'rower':
-    case 'farmer_walk':
     default: {
       if (exercise.animType === 'rower') {
         pose = {
@@ -1145,7 +1085,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
           ankleBack: { x: 184, y: 176 },
           elbow: { x: lerp(164, 96, t), y: 132 },
           wrist: { x: lerp(184, 116, t), y: 134 },
-          phaseLabel: t > 0.6 ? 'Mocny ciąg nogami i dociągnięcie uchwytu' : 'Powrót do przodu'
+          phaseLabel: 'Ergometr'
         };
       } else {
         const step = Math.sin(t * Math.PI * 2) * 14;
@@ -1157,7 +1097,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
           ankleBack: { x: 130 - step * 1.3, y: 204 },
           elbow: { x: 130, y: 106 },
           wrist: { x: 130, y: 136 },
-          phaseLabel: 'Łopatki ściągnięte w dół, stabilny marsz z ciężarem'
+          phaseLabel: 'Stabilny marsz'
         };
       }
       break;
@@ -1165,34 +1105,23 @@ function AnatomicalExerciseAnimator({ exercise }) {
   }
 
   return (
-    <div className="bg-white border border-rose-200 rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm">
-      {/* Pasek nagłówka symulatora */}
-      <div className="px-3 py-2 bg-rose-50/80 border-b border-rose-100 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-rose-600 flex items-center gap-1.5">
-          <Activity className="w-3.5 h-3.5" /> Animacja techniki
-        </span>
+    <div className="bg-[#FFF6F3] rounded-[24px] p-3 flex flex-col justify-between border border-[#F3D5CE]">
+      <div className="flex items-center justify-between gap-2 pb-2">
+        <span className="text-xs font-bold text-[#141414]">{pose.phaseLabel}</span>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setSlowMo(!slowMo)}
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition ${
-              slowMo
-                ? 'bg-rose-500 text-white border-rose-500'
-                : 'bg-white text-stone-600 border-rose-200 hover:border-rose-300'
+            className={`text-[11px] font-bold px-2.5 py-1 rounded-full transition ${
+              slowMo ? 'bg-[#141414] text-white' : 'bg-white text-[#141414] border border-[#141414]/15'
             }`}
           >
-            {slowMo ? '0.5x Wolno' : '1.0x Tempo'}
-          </button>
-          <button
-            onClick={() => setPaused(!paused)}
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-stone-600 border border-rose-200"
-          >
-            {paused ? 'Start' : 'Pauza'}
+            {slowMo ? '0.5x' : '1.0x'}
           </button>
           <a
             href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.ytQuery)}`}
             target="_blank"
             rel="noreferrer"
-            className="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-1 ml-1"
+            className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#F8B4A6] text-[#141414] flex items-center gap-1"
           >
             <span>YT</span>
             <ExternalLink className="w-3 h-3" />
@@ -1200,40 +1129,36 @@ function AnatomicalExerciseAnimator({ exercise }) {
         </div>
       </div>
 
-      {/* Jasne, kobiece studio SVG */}
-      <div className="relative w-full h-56 bg-gradient-to-b from-rose-50/40 via-amber-50/20 to-rose-100/40 flex items-center justify-center">
+      <div className="relative w-full h-52 bg-[#F9E5E0] rounded-[18px] flex items-center justify-center overflow-hidden">
         <svg viewBox="0 0 260 225" className="w-full h-full">
-          {/* Podłoga studyjna / mata */}
-          <line x1="25" y1="206" x2="235" y2="206" stroke="#f9a8d4" strokeWidth="4" strokeLinecap="round" />
+          <line x1="25" y1="206" x2="235" y2="206" stroke="#E5B8AD" strokeWidth="4" strokeLinecap="round" />
 
-          {/* Sprzęt treningowy w tle */}
           {(exercise.animType === 'bench_press' || exercise.animType === 'hip_thrust' || exercise.equipment === 'bench') && (
             <g>
-              <rect x="52" y="146" width="90" height="10" rx="5" fill="#f472b6" />
-              <line x1="65" y1="156" x2="65" y2="205" stroke="#d6d3d1" strokeWidth="5" />
-              <line x1="128" y1="156" x2="128" y2="205" stroke="#d6d3d1" strokeWidth="5" />
+              <rect x="52" y="146" width="90" height="10" rx="5" fill="#141414" />
+              <line x1="65" y1="156" x2="65" y2="205" stroke="#8C736E" strokeWidth="5" />
+              <line x1="128" y1="156" x2="128" y2="205" stroke="#8C736E" strokeWidth="5" />
             </g>
           )}
 
           {exercise.equipment === 'bench_back' && (
             <g>
-              <rect x="58" y="162" width="42" height="10" rx="4" fill="#f472b6" />
-              <line x1="68" y1="172" x2="68" y2="205" stroke="#d6d3d1" strokeWidth="4" />
-              <line x1="90" y1="172" x2="90" y2="205" stroke="#d6d3d1" strokeWidth="4" />
+              <rect x="58" y="162" width="42" height="10" rx="4" fill="#141414" />
+              <line x1="68" y1="172" x2="68" y2="205" stroke="#8C736E" strokeWidth="4" />
+              <line x1="90" y1="172" x2="90" y2="205" stroke="#8C736E" strokeWidth="4" />
             </g>
           )}
 
           {exercise.equipment === 'ball' && (
-            <circle cx={pose.ankleFront.x} cy="180" r="24" fill="#fbcfe8" fillOpacity="0.6" stroke="#f472b6" strokeWidth="2.5" />
+            <circle cx={pose.ankleFront.x} cy="180" r="24" fill="#F8B4A6" stroke="#E0533C" strokeWidth="2.5" />
           )}
 
-          {/* DALSZA NOGA */}
           <line
             x1={pose.hip.x}
             y1={pose.hip.y}
             x2={pose.kneeBack.x}
             y2={pose.kneeBack.y}
-            stroke={isActive('hamstrings') || isActive('quads') ? '#f43f5e' : skinBackColor}
+            stroke={isActive('hamstrings') || isActive('quads') ? activeMuscleColor : skinBackColor}
             strokeWidth="11"
             strokeLinecap="round"
           />
@@ -1246,9 +1171,8 @@ function AnatomicalExerciseAnimator({ exercise }) {
             strokeWidth="8.5"
             strokeLinecap="round"
           />
-          <ellipse cx={pose.ankleBack.x + 4} cy={pose.ankleBack.y} rx="9" ry="4.5" fill="#f9a8d4" />
+          <ellipse cx={pose.ankleBack.x + 4} cy={pose.ankleBack.y} rx="9" ry="4.5" fill="#141414" />
 
-          {/* TUŁÓW (Smukła sylwetka w różowym topie) */}
           <line
             x1={pose.shoulder.x}
             y1={pose.shoulder.y}
@@ -1259,17 +1183,13 @@ function AnatomicalExerciseAnimator({ exercise }) {
             strokeLinecap="round"
           />
 
-          {/* Biodra / Pośladki */}
           <circle
             cx={pose.hip.x - 2}
             cy={pose.hip.y}
             r="11"
             fill={isActive('glutes') ? activeMuscleColor : outfitShorts}
-            stroke={isActive('glutes') ? '#fecdd3' : 'none'}
-            strokeWidth="2"
           />
 
-          {/* BLIŻSZA NOGA */}
           <line
             x1={pose.hip.x}
             y1={pose.hip.y}
@@ -1288,16 +1208,12 @@ function AnatomicalExerciseAnimator({ exercise }) {
             strokeWidth="9.5"
             strokeLinecap="round"
           />
-          <circle cx={pose.kneeFront.x} cy={pose.kneeFront.y} r="5" fill="#fff1f2" />
-          {/* Białe sneakersy z różowym akcentem */}
+          <circle cx={pose.kneeFront.x} cy={pose.kneeFront.y} r="5" fill="#FFF6F3" />
           <path
             d={`M ${pose.ankleFront.x - 6} ${pose.ankleFront.y - 3} L ${pose.ankleFront.x + 12} ${pose.ankleFront.y - 1} L ${pose.ankleFront.x + 13} ${pose.ankleFront.y + 4} L ${pose.ankleFront.x - 7} ${pose.ankleFront.y + 4} Z`}
-            fill="#ffffff"
-            stroke="#f43f5e"
-            strokeWidth="1.5"
+            fill="#141414"
           />
 
-          {/* GŁOWA + DŁUGI KUCYK */}
           <line
             x1={pose.shoulder.x}
             y1={pose.shoulder.y}
@@ -1307,19 +1223,16 @@ function AnatomicalExerciseAnimator({ exercise }) {
             strokeWidth="6.5"
             strokeLinecap="round"
           />
-          {/* Kobiecy kucyk */}
           <path
             d={`M ${pose.head.x - 10} ${pose.head.y - 5} Q ${pose.head.x - 26} ${pose.head.y - 12} ${pose.head.x - 23} ${pose.head.y + 10}`}
             fill="none"
-            stroke="#b45309"
+            stroke="#141414"
             strokeWidth="5.5"
             strokeLinecap="round"
           />
           <circle cx={pose.head.x} cy={pose.head.y} r="12" fill={skinColor} />
-          {/* Różowa gumka/opaska */}
-          <circle cx={pose.head.x - 11} cy={pose.head.y - 5} r="3" fill="#e11d48" />
+          <circle cx={pose.head.x - 11} cy={pose.head.y - 5} r="3" fill="#E0533C" />
 
-          {/* RAMIĘ I PRZEDRAMIĘ */}
           <circle
             cx={pose.shoulder.x}
             cy={pose.shoulder.y}
@@ -1344,15 +1257,14 @@ function AnatomicalExerciseAnimator({ exercise }) {
             strokeWidth="8"
             strokeLinecap="round"
           />
-          <circle cx={pose.wrist.x} cy={pose.wrist.y} r="4" fill="#fff1f2" />
+          <circle cx={pose.wrist.x} cy={pose.wrist.y} r="4" fill="#FFF6F3" />
 
-          {/* AKCESORIA W DŁONIACH */}
           {(exercise.equipment === 'kb_chest' ||
             exercise.equipment === 'kb_low' ||
             exercise.equipment === 'kb_overhead') && (
             <g transform={`translate(${pose.wrist.x}, ${pose.wrist.y})`}>
-              <path d="M -5 -4 C -5 -10, 5 -10, 5 -4" fill="none" stroke="#a8a29e" strokeWidth="3" />
-              <circle cx="0" cy="5" r="9.5" fill="#f43f5e" stroke="#fda4af" strokeWidth="1.5" />
+              <path d="M -5 -4 C -5 -10, 5 -10, 5 -4" fill="none" stroke="#141414" strokeWidth="3" />
+              <circle cx="0" cy="5" r="9.5" fill="#141414" />
               <text x="0" y="8" textAnchor="middle" fontSize="6.5" fontWeight="bold" fill="#ffffff">
                 KB
               </text>
@@ -1361,8 +1273,8 @@ function AnatomicalExerciseAnimator({ exercise }) {
 
           {exercise.equipment === 'barbell' && (
             <g transform={`translate(${pose.wrist.x}, ${pose.wrist.y})`}>
-              <circle cx="0" cy="0" r="14" fill="#fce7f3" stroke="#e11d48" strokeWidth="3.5" />
-              <circle cx="0" cy="0" r="4" fill="#f43f5e" />
+              <circle cx="0" cy="0" r="14" fill="#141414" stroke="#E0533C" strokeWidth="3" />
+              <circle cx="0" cy="0" r="4" fill="#FFF6F3" />
             </g>
           )}
 
@@ -1370,7 +1282,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
             exercise.equipment === 'db_overhead' ||
             exercise.equipment === 'plate') && (
             <g transform={`translate(${pose.wrist.x}, ${pose.wrist.y})`}>
-              <rect x="-9" y="-4" width="18" height="8" rx="3" fill="#e11d48" />
+              <rect x="-9" y="-4" width="18" height="8" rx="3" fill="#141414" />
             </g>
           )}
 
@@ -1380,7 +1292,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
               y1="85"
               x2={pose.wrist.x}
               y2={pose.wrist.y}
-              stroke="#f43f5e"
+              stroke="#141414"
               strokeWidth="2.5"
               strokeDasharray="3 3"
             />
@@ -1388,23 +1300,17 @@ function AnatomicalExerciseAnimator({ exercise }) {
 
           {(exercise.equipment === 'pullup_bar' || exercise.equipment === 'lat_bar') && (
             <g>
-              <line x1="90" y1="18" x2="175" y2="18" stroke="#a8a29e" strokeWidth="5" strokeLinecap="round" />
-              <line x1="132" y1="18" x2={pose.wrist.x} y2={pose.wrist.y} stroke="#f43f5e" strokeWidth="2.5" />
+              <line x1="90" y1="18" x2="175" y2="18" stroke="#141414" strokeWidth="5" strokeLinecap="round" />
+              <line x1="132" y1="18" x2={pose.wrist.x} y2={pose.wrist.y} stroke="#E0533C" strokeWidth="2.5" />
             </g>
           )}
         </svg>
-
-        {/* Etykieta aktualnej fazy ruchu na dole */}
-        <div className="absolute bottom-2 inset-x-2.5 bg-white/90 backdrop-blur-sm border border-rose-200 px-3 py-1.5 rounded-xl flex items-center justify-between shadow-sm">
-          <span className="text-[11px] font-bold text-rose-700">{pose.phaseLabel}</span>
-          <span className="text-[10px] text-rose-500 font-semibold">● Aktywne partie</span>
-        </div>
       </div>
     </div>
   );
 }
 
-// --- POMOCNICZE FUNKCJE INDEXED-DB DO TRWAŁEGO ZAPISU FILMIKÓW Z TELEFONU ---
+// --- INDEXED-DB DO ZAPISU FILMIKÓW ---
 const DB_NAME = 'HyroxAsiaVideoDB_v2';
 const STORE_NAME = 'exercise_videos';
 
@@ -1458,7 +1364,6 @@ const deleteVideoFromDB = async (key) => {
   });
 };
 
-// --- KALKULATOR TALERZY NA SZTANGĘ ---
 const calculatePlates = (totalWeight, barWeight = 20) => {
   const weightNum = parseFloat(totalWeight);
   if (isNaN(weightNum) || weightNum <= barWeight) return [];
@@ -1509,10 +1414,31 @@ export default function App() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [copiedReport, setCopiedReport] = useState(false);
 
-  const [restTimer, setRestTimer] = useState({ active: false, remaining: 0, total: 0, label: '' });
-  const [finisherTimer, setFinisherTimer] = useState({ active: false, seconds: 0, mode: 'EMOM', totalSeconds: 300 });
+  // Główny stoper na dole (przerwy między seriami + ćwiczenia na czas jak Plank i Copenhagen)
+  // { active, paused, mode: 'REST' | 'WORK', remaining, total, endTime, label, nextRest }
+  const [bottomTimer, setBottomTimer] = useState({
+    active: false,
+    paused: false,
+    mode: 'REST',
+    remaining: 0,
+    total: 0,
+    endTime: 0,
+    label: '',
+    nextRest: 0
+  });
+
+  // Stoper Finishera (odporny na blokadę ekranu dzięki startTime)
+  const [finisherTimer, setFinisherTimer] = useState({
+    active: false,
+    seconds: 0,
+    mode: 'EMOM',
+    totalSeconds: 300,
+    startTime: 0
+  });
 
   const wakeLockRef = useRef(null);
+  const lastBeepSecRef = useRef(-1);
+  const lastFinisherBeepRef = useRef(-1);
 
   useEffect(() => {
     localStorage.setItem('hyrox_asia_logs_v3', JSON.stringify(logs));
@@ -1538,7 +1464,7 @@ export default function App() {
       });
       setLocalVideos(map);
     } catch (e) {
-      console.error('Błąd IndexedDB:', e);
+      console.error(e);
     }
   };
 
@@ -1548,7 +1474,7 @@ export default function App() {
 
   const toggleWakeLock = async () => {
     if (!('wakeLock' in navigator)) {
-      alert('Twoja przeglądarka nie wspiera automatycznej blokady wygaszania ekranu.');
+      alert('Brak wsparcia blokady ekranu w tej przeglądarce.');
       return;
     }
     try {
@@ -1559,9 +1485,7 @@ export default function App() {
       } else {
         wakeLockRef.current = await navigator.wakeLock.request('screen');
         setWakeLockActive(true);
-        wakeLockRef.current.addEventListener('release', () => {
-          setWakeLockActive(false);
-        });
+        wakeLockRef.current.addEventListener('release', () => setWakeLockActive(false));
       }
     } catch (err) {
       console.error(err);
@@ -1583,44 +1507,130 @@ export default function App() {
       osc.start();
       osc.stop(ctx.currentTime + duration);
     } catch {
-      // ignoruj
+      // ignore
     }
   };
 
-  useEffect(() => {
-    if (!restTimer.active) return;
-    if (restTimer.remaining <= 0) {
-      playBeep(1046, 0.35);
-      setRestTimer((prev) => ({ ...prev, active: false }));
-      return;
-    }
-    if (restTimer.remaining <= 3) {
-      playBeep(660, 0.12);
-    }
-    const t = setTimeout(() => {
-      setRestTimer((prev) => ({ ...prev, remaining: prev.remaining - 1 }));
-    }, 1000);
-    return () => clearTimeout(t);
-  }, [restTimer]);
+  // Start stopera przerwy lub ćwiczenia na czas (Plank / Copenhagen)
+  const startBottomTimer = (seconds, label, mode = 'REST', nextRest = 0) => {
+    lastBeepSecRef.current = -1;
+    setBottomTimer({
+      active: true,
+      paused: false,
+      mode,
+      remaining: seconds,
+      total: seconds,
+      endTime: Date.now() + seconds * 1000,
+      label,
+      nextRest
+    });
+  };
 
+  const togglePauseBottomTimer = () => {
+    setBottomTimer((prev) => {
+      if (!prev.active) return prev;
+      if (!prev.paused) {
+        return { ...prev, paused: true };
+      } else {
+        return {
+          ...prev,
+          paused: false,
+          endTime: Date.now() + prev.remaining * 1000
+        };
+      }
+    });
+  };
+
+  const adjustBottomTimer = (deltaSec) => {
+    setBottomTimer((prev) => {
+      if (!prev.active) return prev;
+      const nextRem = Math.max(0, prev.remaining + deltaSec);
+      const nextTot = Math.max(prev.total, nextRem);
+      return {
+        ...prev,
+        remaining: nextRem,
+        total: nextTot,
+        endTime: Date.now() + nextRem * 1000
+      };
+    });
+  };
+
+  // Odliczanie dolnego stopera oparte o Date.now() (działa dokładnie nawet po zablokowaniu iPhone'a)
+  useEffect(() => {
+    if (!bottomTimer.active || bottomTimer.paused) return;
+
+    const interval = setInterval(() => {
+      const rem = Math.max(0, Math.ceil((bottomTimer.endTime - Date.now()) / 1000));
+
+      if (rem !== lastBeepSecRef.current) {
+        lastBeepSecRef.current = rem;
+        if (rem > 0 && rem <= 3) {
+          playBeep(660, 0.12);
+        }
+      }
+
+      if (rem <= 0) {
+        playBeep(1046, 0.35);
+        // Jeśli to był stoper pracy (np. Plank 60s) i ćwiczenie ma przerwę, automatycznie odpal przerwę
+        if (bottomTimer.mode === 'WORK' && bottomTimer.nextRest > 0) {
+          startBottomTimer(bottomTimer.nextRest, `Przerwa po: ${bottomTimer.label}`, 'REST', 0);
+        } else {
+          setBottomTimer((prev) => ({ ...prev, active: false, remaining: 0 }));
+        }
+      } else {
+        setBottomTimer((prev) => ({ ...prev, remaining: rem }));
+      }
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [bottomTimer]);
+
+  // Odliczanie stopera Finishera oparte o Date.now()
   useEffect(() => {
     if (!finisherTimer.active) return;
-    if (finisherTimer.seconds >= finisherTimer.totalSeconds) {
-      playBeep(1046, 0.5);
-      setFinisherTimer((prev) => ({ ...prev, active: false }));
-      return;
-    }
-    const t = setTimeout(() => {
-      const nextSec = finisherTimer.seconds + 1;
-      if (finisherTimer.mode === 'EMOM' && nextSec % 60 === 0 && nextSec < finisherTimer.totalSeconds) {
-        playBeep(987, 0.35);
-      } else if (finisherTimer.mode === 'EMOM' && nextSec % 60 >= 57) {
-        playBeep(550, 0.1);
+
+    const interval = setInterval(() => {
+      const elapsed = Math.min(
+        finisherTimer.totalSeconds,
+        Math.floor((Date.now() - finisherTimer.startTime) / 1000)
+      );
+
+      if (elapsed !== lastFinisherBeepRef.current) {
+        lastFinisherBeepRef.current = elapsed;
+        if (finisherTimer.mode === 'EMOM' && elapsed > 0 && elapsed % 60 === 0 && elapsed < finisherTimer.totalSeconds) {
+          playBeep(987, 0.35);
+        } else if (finisherTimer.mode === 'EMOM' && elapsed % 60 >= 57) {
+          playBeep(550, 0.1);
+        }
       }
-      setFinisherTimer((prev) => ({ ...prev, seconds: nextSec }));
-    }, 1000);
-    return () => clearTimeout(t);
+
+      if (elapsed >= finisherTimer.totalSeconds) {
+        playBeep(1046, 0.5);
+        setFinisherTimer((prev) => ({ ...prev, active: false, seconds: prev.totalSeconds }));
+      } else {
+        setFinisherTimer((prev) => ({ ...prev, seconds: elapsed }));
+      }
+    }, 250);
+
+    return () => clearInterval(interval);
   }, [finisherTimer]);
+
+  const toggleFinisherTimer = (mode, totalSeconds) => {
+    setFinisherTimer((prev) => {
+      if (prev.active) {
+        return { ...prev, active: false };
+      }
+      const alreadyElapsed = prev.seconds >= totalSeconds ? 0 : prev.seconds;
+      lastFinisherBeepRef.current = alreadyElapsed;
+      return {
+        active: true,
+        mode,
+        totalSeconds,
+        seconds: alreadyElapsed,
+        startTime: Date.now() - alreadyElapsed * 1000
+      };
+    });
+  };
 
   const getExerciseLog = (week, exercise) => {
     const weekData = logs[week] || {};
@@ -1657,16 +1667,10 @@ export default function App() {
     const rir = prevSet.rir;
 
     let suggestion = null;
-    let badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
-
     if (!isNaN(w)) {
       if (rir === '3-4' || rir === '5+' || (!isNaN(r) && exercise.targetMaxReps && r >= exercise.targetMaxReps && rir === '2')) {
         const increment = w >= 20 ? 2.5 : 1.5;
-        suggestion = `Progresja: spróbuj ${(w + increment).toFixed(1).replace('.0', '')} kg (tydz. temu ${w}kg × ${prevSet.reps || '?'}, RIR ${rir})`;
-        badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      } else if (rir === '0') {
-        suggestion = `Zostań na ${w} kg i pilnuj RIR 2 (tydz. temu upadek RIR 0)`;
-        badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+        suggestion = `Cel dziś: ${(w + increment).toFixed(1).replace('.0', '')} kg (T${selectedWeek - 1}: ${w}kg × ${prevSet.reps || '?'})`;
       } else {
         suggestion = `Tydz. ${selectedWeek - 1}: ${w} kg × ${prevSet.reps || '?'} (RIR ${rir})`;
       }
@@ -1674,7 +1678,7 @@ export default function App() {
       suggestion = `Tydz. ${selectedWeek - 1}: ${prevSet.reps} powt.`;
     }
 
-    return { text: suggestion, badgeColor, prevWeight: prevSet.weight, prevReps: prevSet.reps };
+    return { text: suggestion, prevWeight: prevSet.weight, prevReps: prevSet.reps };
   };
 
   const updateExerciseLog = (exercise, updater) => {
@@ -1716,12 +1720,7 @@ export default function App() {
     });
 
     if (willBeDone && exercise.rest && exercise.rest > 0) {
-      setRestTimer({
-        active: true,
-        remaining: exercise.rest,
-        total: exercise.rest,
-        label: `${exercise.name} (Seria ${setIdx + 1})`
-      });
+      startBottomTimer(exercise.rest, exercise.name, 'REST', 0);
     }
   };
 
@@ -1751,12 +1750,12 @@ export default function App() {
         });
         await navigator.share({
           title: `${videoObj.exerciseName} - Tydzień ${videoObj.week}`,
-          text: `Hej Pawcio! Przesyłam serię do oceny techniki: ${videoObj.exerciseName} (Tydzień ${videoObj.week})`,
+          text: `${videoObj.exerciseName} (Tydzień ${videoObj.week})`,
           files: [file]
         });
         return;
       } catch {
-        // Fallback
+        // fallback
       }
     }
     const a = document.createElement('a');
@@ -1776,7 +1775,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `hyrox_plan_asia_backup_tydz_${selectedWeek}.json`;
+    a.download = `hyrox_plan_backup_t${selectedWeek}.json`;
     a.click();
   };
 
@@ -1790,10 +1789,10 @@ export default function App() {
         if (data.logs) setLogs(data.logs);
         if (data.finisherLogs) setFinisherLogs(data.finisherLogs);
         if (data.selectedWeek) setSelectedWeek(data.selectedWeek);
-        alert('Kopia zapasowa została pomyślnie wczytana!');
+        alert('Wczytano kopię zapasową.');
         setShowBackupModal(false);
       } catch {
-        alert('Nieprawidłowy plik kopii zapasowej.');
+        alert('Nieprawidłowy plik.');
       }
     };
     reader.readAsText(file);
@@ -1802,8 +1801,8 @@ export default function App() {
   const generatePawelReport = () => {
     const workout = WORKOUT_PLAN[selectedWorkout];
     const lines = [
-      `🌸 RAPORT TRENINGOWY – TYDZIEŃ ${selectedWeek}`,
-      `📌 ${workout.title}`,
+      `RAPORT • TYDZIEŃ ${selectedWeek}`,
+      `${workout.title}`,
       `────────────────────`
     ];
     workout.main.forEach((ex) => {
@@ -1818,20 +1817,20 @@ export default function App() {
             return `${s.weight ? s.weight + 'kg' : 'BW'}×${s.reps || ex.reps} (RIR ${s.rir})`;
           })
           .join(', ');
-        lines.push(`✅ ${ex.name}: ${setsStr}${exLog.recordedForPawel ? ' [🎥 Nagrane]' : ''}`);
-        if (exLog.note) lines.push(`   💬 Notatka: ${exLog.note}`);
+        lines.push(`✓ ${ex.name}: ${setsStr}${exLog.recordedForPawel ? ' [Wideo]' : ''}`);
+        if (exLog.note) lines.push(`  Notatka: ${exLog.note}`);
       } else {
-        lines.push(`⬜ ${ex.name}: jeszcze nieuzupełnione`);
+        lines.push(`- ${ex.name}: brak wpisu`);
       }
     });
 
     const fLog = finisherLogs[selectedWeek]?.[selectedWorkout];
     lines.push(`────────────────────`);
     lines.push(
-      `✨ ${workout.finisher.title}: ${
+      `${workout.finisher.title}: ${
         fLog?.rounds || fLog?.kcalOrTime
-          ? `${fLog.rounds ? fLog.rounds + ' rund/obwodów ' : ''}${fLog.kcalOrTime ? '(' + fLog.kcalOrTime + ')' : ''}`
-          : 'Wykonano'
+          ? `${fLog.rounds ? fLog.rounds + ' ' : ''}${fLog.kcalOrTime ? '(' + fLog.kcalOrTime + ')' : ''}`
+          : 'Zrobione'
       }`
     );
     return lines.join('\n');
@@ -1865,196 +1864,227 @@ export default function App() {
   }, 0);
   const progressPercent = Math.round((completedMainSets / totalMainSets) * 100);
 
+  // Obliczenie % paska postępu dla dolnego stopera
+  const bottomTimerPercent =
+    bottomTimer.total > 0
+      ? Math.min(100, Math.max(0, ((bottomTimer.total - bottomTimer.remaining) / bottomTimer.total) * 100))
+      : 0;
+
+  // Obliczenie % paska postępu dla Finishera
+  const finisherPercent =
+    finisherTimer.totalSeconds > 0
+      ? Math.min(100, Math.max(0, (finisherTimer.seconds / finisherTimer.totalSeconds) * 100))
+      : 0;
+
   return (
-    <div className="min-h-screen bg-[#fffafa] text-stone-800 pb-28 font-sans selection:bg-rose-300 selection:text-rose-950">
-      {/* KOBIECY, JASNY PASEK NAWIGACJI (BLUSH & CREAM) */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-rose-100 shadow-sm px-4 py-3">
-        <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shadow-md shadow-rose-200">
-              <Heart className="w-5 h-5 text-white fill-white" />
-            </div>
-            <div>
+    <div
+      style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif" }}
+      className="min-h-screen bg-[#F8B4A6] text-[#141414] pb-32 selection:bg-[#141414] selection:text-white"
+    >
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
+      {/* GÓRNY OBSZAR W STYLU MAKIETY */}
+      <div className="max-w-xl mx-auto px-4 pt-5 pb-4">
+        <div className="flex items-center justify-between gap-2">
+          {/* Biała pastylka z wbudowanym paskiem postępu treningu */}
+          <div className="flex-1 bg-white rounded-full px-4 py-2 flex flex-col justify-center shadow-sm">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h1 className="font-serif font-bold text-base sm:text-lg tracking-tight text-stone-800">
-                  Asia • Hyrox Studio
-                </h1>
-                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200">
-                  Plan od Pawcia 🐻
+                <span className="w-2 h-2 rounded-full bg-[#E0533C]" />
+                <span className="text-xs font-extrabold tracking-tight text-[#141414]">
+                  HYROX • TYDZIEŃ {selectedWeek}
                 </span>
               </div>
-              <p className="text-xs text-stone-500">
-                Miesiąc 1–2 • Cel od 2. tyg: <strong className="text-rose-600">RIR 2 (2 ruchy w zapasie)</strong>
-              </p>
+              <span className="text-[11px] font-bold text-[#7A625D]">
+                {completedMainSets}/{totalMainSets} ({progressPercent}%)
+              </span>
+            </div>
+            <div className="w-full h-1 bg-[#F9E5E0] rounded-full overflow-hidden mt-1">
+              <div
+                className="h-full bg-[#E0533C] transition-all duration-300 rounded-full"
+                style={{ width: `${progressPercent}%` }}
+              />
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setActiveTab('rir_guide')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 border transition ${
-                activeTab === 'rir_guide'
-                  ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                  : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-              }`}
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>RIR?</span>
-            </button>
-
-            <button
               onClick={toggleWakeLock}
-              title="Nie wygaszaj ekranu na treningu"
-              className={`p-2 rounded-full border text-xs flex items-center gap-1 transition ${
-                wakeLockActive
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-600'
-                  : 'bg-white border-rose-200 text-stone-400 hover:text-rose-500'
+              title="Nie wygaszaj ekranu"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition shadow-sm ${
+                wakeLockActive ? 'bg-[#141414] text-white' : 'bg-white text-[#141414]'
               }`}
             >
               <Smartphone className="w-4 h-4" />
             </button>
-
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`p-2 rounded-full border transition ${
-                soundEnabled
-                  ? 'bg-rose-50 border-rose-200 text-rose-500'
-                  : 'bg-white border-rose-100 text-stone-400'
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition shadow-sm ${
+                soundEnabled ? 'bg-white text-[#141414]' : 'bg-white/60 text-[#7A625D]'
               }`}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
-
             <button
               onClick={() => setShowBackupModal(true)}
-              className="p-2 rounded-full bg-white border border-rose-200 text-rose-500 hover:bg-rose-50"
+              className="w-10 h-10 rounded-full bg-white text-[#141414] flex items-center justify-center shadow-sm"
             >
               <ShieldCheck className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* WYBÓR TYGODNIA (PASTELOWE PASTYLKI) */}
-        <div className="max-w-3xl mx-auto mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        {/* Wybór tygodnia 1-8 */}
+        <div className="mt-3 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((w) => (
             <button
               key={w}
               onClick={() => setSelectedWeek(w)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
                 selectedWeek === w
-                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm shadow-rose-200'
-                  : 'bg-rose-50/70 text-stone-600 border border-rose-100 hover:bg-rose-100/60'
+                  ? 'bg-[#141414] text-white shadow-sm'
+                  : 'bg-white/50 text-[#141414] hover:bg-white/80'
               }`}
             >
-              <span>Tydzień {w}</span>
+              Tydz. {w}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* ZAKŁADKI */}
-        <div className="max-w-3xl mx-auto mt-2.5 grid grid-cols-4 gap-1.5 bg-rose-50/80 p-1 rounded-2xl border border-rose-100">
-          <button
-            onClick={() => setActiveTab('workout')}
-            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-              activeTab === 'workout' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-rose-600'
-            }`}
-          >
-            <Dumbbell className="w-3.5 h-3.5" />
-            <span>Trening</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('videos')}
-            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-              activeTab === 'videos' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-rose-600'
-            }`}
-          >
-            <Film className="w-3.5 h-3.5" />
-            <span>Wideo ({Object.keys(localVideos).length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('progress')}
-            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-              activeTab === 'progress' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-rose-600'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            <span>Progres</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('rir_guide')}
-            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-              activeTab === 'rir_guide' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-rose-600'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Ściąga RIR</span>
-          </button>
+      {/* GŁÓWNA KARTA */}
+      <main className="max-w-xl mx-auto bg-[#FFF6F3] rounded-t-[38px] rounded-b-[38px] px-5 pt-7 pb-10 shadow-xl min-h-[82vh]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#9A7B74]">
+              Plan Treningowy • RIR 2
+            </p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#141414] leading-tight mt-0.5">
+              {activeTab === 'workout'
+                ? currentWorkout.shortTitle
+                : activeTab === 'progress'
+                ? 'Progres'
+                : activeTab === 'videos'
+                ? 'Moje wideo'
+                : 'Skala RIR'}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-[#F9E5E0] p-1 rounded-full">
+            <button
+              onClick={() => setActiveTab('workout')}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
+                activeTab === 'workout' ? 'bg-[#141414] text-white' : 'text-[#141414]'
+              }`}
+            >
+              Plan
+            </button>
+            <button
+              onClick={() => setActiveTab('progress')}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
+                activeTab === 'progress' ? 'bg-[#141414] text-white' : 'text-[#141414]'
+              }`}
+            >
+              Wyniki
+            </button>
+            <button
+              onClick={() => setActiveTab('videos')}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
+                activeTab === 'videos' ? 'bg-[#141414] text-white' : 'text-[#141414]'
+              }`}
+            >
+              Wideo ({Object.keys(localVideos).length})
+            </button>
+            <button
+              onClick={() => setActiveTab('rir_guide')}
+              className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition ${
+                activeTab === 'rir_guide' ? 'bg-[#141414] text-white' : 'text-[#141414]'
+              }`}
+            >
+              ?
+            </button>
+          </div>
         </div>
-      </header>
 
-      <main className="max-w-3xl mx-auto px-4 pt-4">
-        {/* ZAKŁADKA RIR */}
+        {/* PASTYLKI WYBORU TRENINGU */}
+        {activeTab === 'workout' && (
+          <div className="mt-5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+            {[1, 2, 3].map((id) => {
+              const w = WORKOUT_PLAN[id];
+              const isSelected = selectedWorkout === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSelectedWorkout(id)}
+                  className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                    isSelected
+                      ? 'bg-[#141414] text-white shadow-sm'
+                      : 'bg-transparent text-[#141414] border border-[#141414]/35 hover:border-[#141414]'
+                  }`}
+                >
+                  Trening {id} • {w.shortTitle}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* WIDOK: SKALA RIR */}
         {activeTab === 'rir_guide' && (
-          <div className="bg-white border border-rose-200 rounded-3xl p-5 space-y-4 shadow-sm">
-            <h2 className="text-lg font-serif font-bold text-stone-800">
-              🌸 Jak korzystać ze skali RIR na treningu?
-            </h2>
-            <div className="grid gap-3 text-xs">
-              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200">
-                <p className="font-bold text-rose-700">🎯 RIR 2 (Twój cel od 2. tygodnia planu Pawła)</p>
-                <p className="text-stone-600 mt-1">
-                  Kończysz serię i czujesz przyjemne zmęczenie mięśni – wiesz, że przy maksymalnej walce zrobiłabyś
-                  jeszcze dokładnie 2 poprawne powtórzenia, ale 3. już by nie weszło.
-                </p>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
-                <p className="font-bold text-amber-800">✨ RIR 5+ (Seria rozgrzewkowa)</p>
-                <p className="text-stone-600 mt-1">
-                  Jeśli po ostatnim powtórzeniu czujesz, że zrobisz jeszcze 5 ruchów, seria była zbyt lekka – dołóż
-                  ciężaru i nie wliczaj jej do 3 serii roboczych.
-                </p>
-              </div>
+          <div className="mt-6 space-y-3">
+            <div className="p-4 rounded-[24px] bg-[#F9E5E0]">
+              <span className="px-2.5 py-1 rounded-full bg-[#141414] text-white text-[11px] font-bold">
+                RIR 2 • Cel od 2. tygodnia
+              </span>
+              <p className="text-sm font-semibold text-[#141414] mt-2">
+                Zostawiasz dokładnie 2 powtórzenia w zapasie (70–80% maksa). Czujesz mocną pracę, ale ostatnie 2 ruchy
+                wciąż byłyby poprawne technicznie.
+              </p>
+            </div>
+            <div className="p-4 rounded-[24px] bg-[#F9E5E0]">
+              <span className="px-2.5 py-1 rounded-full bg-[#E0533C] text-white text-[11px] font-bold">
+                RIR 5+ • Za lekko
+              </span>
+              <p className="text-sm font-semibold text-[#141414] mt-2">
+                Jeśli po serii czujesz, że zrobisz jeszcze 5 powtórzeń, traktujesz ją jako rozgrzewkową i dokładasz
+                ciężaru.
+              </p>
             </div>
           </div>
         )}
 
-        {/* ZAKŁADKA MOJE WIDEO */}
+        {/* WIDOK: MOJE WIDEO */}
         {activeTab === 'videos' && (
-          <div className="bg-white border border-rose-200 rounded-3xl p-5 shadow-sm">
-            <h2 className="text-base font-bold text-stone-800 flex items-center gap-2">
-              <Film className="w-5 h-5 text-rose-500" />
-              <span>Twoje nagrane filmiki ({Object.keys(localVideos).length})</span>
-            </h2>
+          <div className="mt-6">
             {Object.keys(localVideos).length === 0 ? (
-              <div className="text-center py-10 text-stone-400 text-sm">
-                Nie dodałaś jeszcze żadnego filmiku. Przy ćwiczeniu kliknij <strong className="text-rose-500">+ Mój filmik</strong>.
+              <div className="p-10 rounded-[28px] bg-[#F9E5E0] text-center text-sm font-semibold text-[#7A625D]">
+                Brak wgranych filmików. Kliknij „+ Wideo” przy dowolnym ćwiczeniu.
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4 mt-4">
+              <div className="grid sm:grid-cols-2 gap-3">
                 {Object.values(localVideos).map((vid) => (
-                  <div
-                    key={vid.key}
-                    className="bg-rose-50/40 border border-rose-200 rounded-2xl overflow-hidden flex flex-col"
-                  >
-                    <video src={vid.url} controls playsInline className="w-full h-52 object-cover bg-black" />
-                    <div className="p-3 flex items-center justify-between gap-2">
+                  <div key={vid.key} className="bg-[#F9E5E0] rounded-[24px] overflow-hidden p-3 space-y-2.5">
+                    <video src={vid.url} controls playsInline className="w-full h-48 object-cover rounded-[16px] bg-black" />
+                    <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
-                          Tydzień {vid.week}
-                        </span>
-                        <h3 className="font-bold text-sm text-stone-800 mt-1">{vid.exerciseName}</h3>
+                        <span className="text-[10px] font-bold uppercase text-[#7A625D]">Tydzień {vid.week}</span>
+                        <h3 className="font-bold text-sm text-[#141414]">{vid.exerciseName}</h3>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex gap-1.5">
                         <button
                           onClick={() => handleShareVideo(vid)}
-                          className="py-1.5 px-3 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-sm"
+                          className="px-3 py-1.5 rounded-full bg-[#141414] text-white text-xs font-bold flex items-center gap-1"
                         >
-                          <Share2 className="w-3.5 h-3.5" />
+                          <Share2 className="w-3 h-3" />
                           <span>Wyślij</span>
                         </button>
                         <button
                           onClick={() => handleDeleteVideo(vid.key)}
-                          className="p-1.5 rounded-full bg-white text-rose-500 border border-rose-200"
+                          className="p-1.5 rounded-full bg-white text-[#141414]"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -2067,44 +2097,42 @@ export default function App() {
           </div>
         )}
 
-        {/* ZAKŁADKA PROGRES */}
+        {/* WIDOK: TABELA PROGRESU 8 TYGODNI */}
         {activeTab === 'progress' && (
-          <div className="bg-white border border-rose-200 rounded-3xl p-5 space-y-4 shadow-sm">
-            <h2 className="text-base font-bold text-stone-800 flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-rose-500" />
-              <span>Twój progres ciężarów (Tydzień 1 – 8)</span>
-            </h2>
+          <div className="mt-6 space-y-4">
             {[1, 2, 3].map((wId) => (
-              <div key={wId} className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 overflow-x-auto">
-                <h3 className="text-xs font-bold text-rose-600 uppercase mb-2">{WORKOUT_PLAN[wId].title}</h3>
+              <div key={wId} className="bg-[#F9E5E0] rounded-[26px] p-4 overflow-x-auto">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#141414] mb-3">
+                  {WORKOUT_PLAN[wId].title}
+                </h3>
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-rose-200 text-stone-500">
+                    <tr className="border-b border-[#141414]/10 text-[#7A625D]">
                       <th className="py-1.5 pr-2">Ćwiczenie</th>
                       {[1, 2, 3, 4, 5, 6, 7, 8].map((wk) => (
-                        <th key={wk} className="py-1.5 px-1.5 text-center">
+                        <th key={wk} className="py-1.5 px-1 text-center">
                           T{wk}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-rose-100">
+                  <tbody className="divide-y divide-[#141414]/5">
                     {WORKOUT_PLAN[wId].main.map((ex) => (
                       <tr key={ex.id}>
-                        <td className="py-2 pr-2 font-medium text-stone-700">{ex.name}</td>
+                        <td className="py-2 pr-2 font-bold text-[#141414]">{ex.name}</td>
                         {[1, 2, 3, 4, 5, 6, 7, 8].map((wk) => {
                           const l = logs[wk]?.[ex.id];
                           const weights =
                             l?.sets?.map((s) => parseFloat(s.weight)).filter((n) => !isNaN(n) && n > 0) || [];
                           const maxW = weights.length > 0 ? Math.max(...weights) : null;
                           return (
-                            <td key={wk} className="py-2 px-1.5 text-center">
+                            <td key={wk} className="py-2 px-1 text-center">
                               {maxW ? (
-                                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">
-                                  {maxW}kg
+                                <span className="px-2 py-0.5 rounded-full bg-[#141414] text-white font-bold text-[11px]">
+                                  {maxW}
                                 </span>
                               ) : (
-                                <span className="text-stone-300">-</span>
+                                <span className="text-[#9A7B74]">-</span>
                               )}
                             </td>
                           );
@@ -2118,188 +2146,110 @@ export default function App() {
           </div>
         )}
 
-        {/* ZAKŁADKA TRENING */}
+        {/* WIDOK GŁÓWNY: TRENING */}
         {activeTab === 'workout' && (
-          <div className="space-y-4">
-            {/* KARTY WYBORU TRENINGU 1 / 2 / 3 */}
-            <div className="grid grid-cols-3 gap-2.5">
-              {[1, 2, 3].map((id) => {
-                const w = WORKOUT_PLAN[id];
-                const isSelected = selectedWorkout === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => setSelectedWorkout(id)}
-                    className={`p-3.5 rounded-2xl border text-left transition ${
-                      isSelected
-                        ? 'bg-gradient-to-br from-rose-100/90 via-pink-50 to-white border-rose-300 shadow-sm'
-                        : 'bg-white border-rose-100 hover:border-rose-200'
-                    }`}
-                  >
-                    <span
-                      className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
-                        isSelected ? 'bg-rose-500 text-white' : 'bg-rose-50 text-rose-500'
+          <div className="mt-6 space-y-6">
+            {/* MOBILIZACJA (ROZGRZEWKA) */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-extrabold uppercase tracking-wider text-[#7A625D]">
+                  Mobilizacja (Rozgrzewka)
+                </h2>
+                <span className="text-xs font-bold text-[#7A625D]">{currentWorkout.warmup.length} ćwiczeń</span>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-2.5">
+                {currentWorkout.warmup.map((ex) => {
+                  const exLog = getExerciseLog(selectedWeek, ex);
+                  const isDemoOpen = !!openDemos[ex.id];
+                  const videoKey = `w${selectedWeek}_${ex.id}`;
+                  const uploadedVideo = localVideos[videoKey];
+                  const allDone = exLog.sets.every((s) => s.done);
+
+                  return (
+                    <div
+                      key={ex.id}
+                      className={`rounded-[24px] p-3.5 transition flex flex-col justify-between gap-2.5 ${
+                        allDone ? 'bg-[#F3D5CE]' : 'bg-[#F9E5E0]'
                       }`}
                     >
-                      Dzień {id}
-                    </span>
-                    <p className="font-bold text-xs sm:text-sm text-stone-800 mt-2 line-clamp-1">
-                      {w.title.replace(`Trening ${id}: `, '')}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-sm text-[#141414] leading-snug">{ex.name}</h3>
+                          <p className="text-xs font-semibold text-[#7A625D] mt-0.5">
+                            {ex.sets} × {ex.reps} • {ex.notes}
+                          </p>
+                        </div>
 
-            {/* PASEK POSTĘPU + RAPORT */}
-            <div className="bg-white border border-rose-200 rounded-3xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-              <div className="flex-1 min-w-[200px]">
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-serif font-bold text-stone-800">
-                    {currentWorkout.title} • Tydzień {selectedWeek}
-                  </span>
-                  <span className="text-rose-600 font-bold">
-                    {completedMainSets}/{totalMainSets} serii ({progressPercent}%)
-                  </span>
-                </div>
-                <div className="w-full h-2.5 bg-rose-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-rose-400 to-pink-500 transition-all duration-300 rounded-full"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowReportModal(true)}
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-rose-200"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>Raport dla Pawcia</span>
-              </button>
-            </div>
-
-            {/* MOBILIZACJA (ROZGRZEWKA) */}
-            <section className="space-y-2.5">
-              <div className="px-3 py-2 rounded-xl bg-rose-100/70 border border-rose-200/70 flex items-center justify-between">
-                <h2 className="text-xs font-serif font-bold uppercase tracking-wider text-rose-800">
-                  🌸 Mobilizacja (Rozgrzewka)
-                </h2>
-                <span className="text-[11px] text-rose-600 font-medium">Płynne, spokojne ruchy</span>
-              </div>
-
-              {currentWorkout.warmup.map((ex) => {
-                const exLog = getExerciseLog(selectedWeek, ex);
-                const isDemoOpen = !!openDemos[ex.id];
-                const videoKey = `w${selectedWeek}_${ex.id}`;
-                const uploadedVideo = localVideos[videoKey];
-
-                return (
-                  <div
-                    key={ex.id}
-                    className="bg-white border border-rose-100 rounded-3xl p-4 space-y-3 shadow-sm"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-bold text-sm text-stone-800">{ex.name}</h3>
-                        <p className="text-xs text-stone-500 mt-0.5">
-                          Serie: <strong className="text-stone-700">{ex.sets}</strong> • Powtórzenia:{' '}
-                          <strong className="text-rose-600">{ex.reps}</strong> • {ex.notes}
-                        </p>
+                        <div className="flex items-center gap-1">
+                          <label className="cursor-pointer w-7 h-7 rounded-full bg-white text-[#141414] flex items-center justify-center shadow-sm">
+                            <Video className="w-3.5 h-3.5" />
+                            <input
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              onChange={(e) => handleVideoUpload(ex, e.target.files?.[0])}
+                            />
+                          </label>
+                          <button
+                            onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
+                              isDemoOpen ? 'bg-[#141414] text-white' : 'bg-white text-[#141414]'
+                            }`}
+                          >
+                            <Activity className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <label className="cursor-pointer px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold flex items-center gap-1 border border-rose-200">
-                          <Video className="w-3.5 h-3.5" />
-                          <span>+ Filmik</span>
-                          <input
-                            type="file"
-                            accept="video/*"
-                            className="hidden"
-                            onChange={(e) => handleVideoUpload(ex, e.target.files?.[0])}
-                          />
-                        </label>
-
-                        <button
-                          onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                          className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 border transition ${
-                            isDemoOpen
-                              ? 'bg-rose-500 text-white border-rose-500'
-                              : 'bg-white text-stone-600 border-rose-200 hover:bg-rose-50'
-                          }`}
-                        >
-                          <Activity className="w-3.5 h-3.5" />
-                          <span>Animacja</span>
-                          {isDemoOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
+                        {exLog.sets.map((s, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleToggleSetDone(ex, idx)}
+                            className={`flex-1 py-1.5 rounded-full text-xs font-bold flex items-center justify-center gap-1 transition ${
+                              s.done
+                                ? 'bg-[#141414] text-white'
+                                : 'bg-white text-[#141414] hover:bg-white/80'
+                            }`}
+                          >
+                            {s.done && <Check className="w-3 h-3" />}
+                            <span>S{idx + 1}</span>
+                          </button>
+                        ))}
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {exLog.sets.map((s, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleToggleSetDone(ex, idx)}
-                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border transition ${
-                            s.done
-                              ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
-                              : 'bg-rose-50/50 border-rose-200 text-stone-600 hover:bg-rose-100/50'
-                          }`}
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>
-                            Seria {idx + 1} ({ex.reps})
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {isDemoOpen && (
-                      <div className="pt-3 border-t border-rose-100 grid sm:grid-cols-2 gap-3">
-                        <AnatomicalExerciseAnimator exercise={ex} />
-                        <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 flex flex-col justify-between space-y-2">
-                          <div>
-                            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700">
-                              {ex.muscles}
-                            </span>
-                            <ul className="mt-2.5 space-y-1.5 text-xs text-stone-600 list-disc pl-4">
-                              {ex.cues.map((c, i) => (
-                                <li key={i}>{c}</li>
-                              ))}
-                            </ul>
-                          </div>
+                      {isDemoOpen && (
+                        <div className="pt-2 space-y-2">
+                          <AnatomicalExerciseAnimator exercise={ex} />
+                          <ul className="text-[11px] font-medium text-[#5C4742] list-disc pl-4 space-y-1">
+                            {ex.cues.map((c, i) => (
+                              <li key={i}>{c}</li>
+                            ))}
+                          </ul>
                           {uploadedVideo && (
-                            <div className="pt-2 border-t border-rose-200/60 space-y-1.5">
-                              <video
-                                src={uploadedVideo.url}
-                                controls
-                                playsInline
-                                className="w-full h-36 object-cover rounded-xl bg-black"
-                              />
-                              <button
-                                onClick={() => handleShareVideo(uploadedVideo)}
-                                className="w-full py-1.5 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-1"
-                              >
-                                <Share2 className="w-3.5 h-3.5" />
-                                <span>Wyślij Pawłowi</span>
-                              </button>
-                            </div>
+                            <video
+                              src={uploadedVideo.url}
+                              controls
+                              playsInline
+                              className="w-full h-32 object-cover rounded-[16px] bg-black"
+                            />
                           )}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </section>
 
             {/* CZĘŚĆ GŁÓWNA */}
-            <section className="space-y-3 pt-2">
-              <div className="px-3 py-2 rounded-xl bg-rose-100/70 border border-rose-200/70 flex items-center justify-between">
-                <h2 className="text-xs font-serif font-bold uppercase tracking-wider text-rose-800">
-                  ✨ Część Główna (Cel: RIR 2)
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-extrabold uppercase tracking-wider text-[#7A625D]">
+                  Część Główna
                 </h2>
-                <span className="text-[11px] text-rose-600 font-medium">Zapis ciężarów i stoper przerw</span>
+                <span className="text-xs font-bold text-[#7A625D]">Automatyczny stoper przerw</span>
               </div>
 
               {currentWorkout.main.map((ex) => {
@@ -2312,52 +2262,48 @@ export default function App() {
                 return (
                   <div
                     key={ex.id}
-                    className={`bg-white border rounded-3xl p-4 space-y-3.5 shadow-sm ${
-                      ex.superset ? 'border-pink-300 ring-1 ring-pink-100' : 'border-rose-100'
-                    }`}
+                    className="bg-[#F9E5E0] rounded-[28px] p-4 space-y-3.5 transition"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-base text-stone-800">{ex.name}</h3>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="font-extrabold text-base text-[#141414]">{ex.name}</h3>
                           {ex.superset && (
-                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">
-                              ✨ {ex.superset}
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#141414] text-white">
+                              {ex.superset}
                             </span>
                           )}
                           {ex.unilateral && (
                             <button
                               onClick={() => updateExerciseLog(ex, (c) => ({ ...c, splitLR: !c.splitLR }))}
-                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition ${
+                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full transition ${
                                 exLog.splitLR
-                                  ? 'bg-rose-500 text-white border-rose-500'
-                                  : 'bg-rose-50 text-rose-600 border-rose-200'
+                                  ? 'bg-[#141414] text-white'
+                                  : 'bg-white text-[#141414]'
                               }`}
                             >
-                              {exLog.splitLR ? '✓ Osobno L / P' : '⇄ Podziel L / P'}
+                              {exLog.splitLR ? 'L / P osobno' : 'Podziel L/P'}
                             </button>
                           )}
                           {ex.barbell && (
                             <button
                               onClick={() => setOpenPlateCalc((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                              className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1"
+                              className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#141414] flex items-center gap-1"
                             >
                               <Scale className="w-3 h-3" />
                               <span>Talerze</span>
                             </button>
                           )}
                         </div>
-                        <p className="text-xs text-stone-500 mt-1">
-                          Serie: <strong className="text-stone-800">{ex.sets}</strong> • Powtórzenia:{' '}
-                          <strong className="text-rose-600">{ex.reps}</strong> • Przerwa:{' '}
-                          <strong className="text-pink-600">{ex.rest}s</strong> • {ex.notes}
+                        <p className="text-xs font-semibold text-[#7A625D] mt-0.5">
+                          {ex.sets} serie × {ex.reps} • Przerwa {ex.rest}s • {ex.notes}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <label className="cursor-pointer px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold flex items-center gap-1 border border-rose-200">
+                        <label className="cursor-pointer px-3 py-1.5 rounded-full bg-white text-[#141414] text-xs font-bold flex items-center gap-1 shadow-sm">
                           <Video className="w-3.5 h-3.5" />
-                          <span>{uploadedVideo ? 'Zmień filmik' : '+ Mój filmik'}</span>
+                          <span>{uploadedVideo ? 'Wideo ✓' : '+ Wideo'}</span>
                           <input
                             type="file"
                             accept="video/*"
@@ -2368,35 +2314,32 @@ export default function App() {
 
                         <button
                           onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 border transition ${
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition shadow-sm ${
                             isDemoOpen
-                              ? 'bg-rose-500 text-white border-rose-500'
-                              : 'bg-white text-stone-600 border-rose-200 hover:bg-rose-50'
+                              ? 'bg-[#141414] text-white'
+                              : 'bg-white text-[#141414]'
                           }`}
                         >
                           <Activity className="w-3.5 h-3.5" />
-                          <span>Animacja</span>
-                          {isDemoOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          <span>Ruch</span>
                         </button>
                       </div>
                     </div>
 
                     {ex.barbell && isPlateOpen && (
-                      <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 text-xs">
+                      <div className="p-3 rounded-[20px] bg-white space-y-2 text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-amber-800">Talerze na jedną stronę sztangi:</span>
-                          <div className="flex items-center gap-1">
+                          <span className="font-bold text-[#141414]">Talerze na jedną stronę:</span>
+                          <div className="flex gap-1">
                             {[20, 15, 10].map((bw) => (
                               <button
                                 key={bw}
                                 onClick={() => updateExerciseLog(ex, (c) => ({ ...c, barWeight: bw }))}
-                                className={`px-2.5 py-0.5 rounded-full font-bold ${
-                                  exLog.barWeight === bw
-                                    ? 'bg-amber-500 text-white'
-                                    : 'bg-white text-stone-500 border border-amber-200'
+                                className={`px-2 py-0.5 rounded-full font-bold ${
+                                  exLog.barWeight === bw ? 'bg-[#141414] text-white' : 'bg-[#F9E5E0] text-[#141414]'
                                 }`}
                               >
-                                Gryf {bw}kg
+                                {bw}kg
                               </button>
                             ))}
                           </div>
@@ -2404,20 +2347,20 @@ export default function App() {
                         {exLog.sets.map((s, idx) => {
                           const plates = calculatePlates(s.weight, exLog.barWeight);
                           return (
-                            <div key={idx} className="flex items-center justify-between text-stone-600">
+                            <div key={idx} className="flex items-center justify-between text-[#7A625D]">
                               <span>Seria {idx + 1} ({s.weight || 0} kg):</span>
-                              <div className="flex items-center gap-1">
+                              <div className="flex gap-1">
                                 {plates.length > 0 ? (
                                   plates.map((p, pIdx) => (
                                     <span
                                       key={pIdx}
-                                      className="px-2 py-0.5 rounded-full bg-white border border-amber-300 text-amber-800 font-bold"
+                                      className="px-2 py-0.5 rounded-full bg-[#F9E5E0] text-[#141414] font-bold"
                                     >
                                       +{p}kg
                                     </span>
                                   ))
                                 ) : (
-                                  <span className="text-stone-400">Sam gryf</span>
+                                  <span>Sam gryf</span>
                                 )}
                               </div>
                             </div>
@@ -2426,7 +2369,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* SERIE ROBOCZE */}
+                    {/* Wiersze serii */}
                     <div className="space-y-2">
                       {exLog.sets.map((s, idx) => {
                         const advice = getPreviousWeekAdvice(ex, idx);
@@ -2435,139 +2378,127 @@ export default function App() {
                         return (
                           <div
                             key={idx}
-                            className={`p-3 rounded-2xl border transition space-y-2 ${
-                              isTooLightWarmup
-                                ? 'bg-amber-50/70 border-amber-300'
-                                : s.done
-                                ? 'bg-rose-50/80 border-rose-300'
-                                : 'bg-[#fffcfc] border-rose-100'
+                            className={`p-2.5 rounded-[20px] transition space-y-1.5 ${
+                              s.done ? 'bg-[#F3D5CE]' : 'bg-[#FFF6F3]'
                             }`}
                           >
                             {advice && (
-                              <span
-                                className={`inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${advice.badgeColor}`}
-                              >
-                                💡 {advice.text}
+                              <span className="inline-block text-[10px] font-bold text-[#7A625D] px-1">
+                                {advice.text}
                               </span>
                             )}
 
-                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                              <span className="w-7 text-xs font-bold text-rose-400">#{idx + 1}</span>
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                              <span className="w-5 text-xs font-extrabold text-[#141414] text-center">
+                                {idx + 1}
+                              </span>
 
                               {!exLog.splitLR ? (
                                 <>
-                                  <div className="flex-1 min-w-[85px]">
-                                    <label className="text-[10px] text-stone-400 font-medium block">
-                                      Ciężar (kg)
-                                    </label>
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    placeholder={advice?.prevWeight ? `${advice.prevWeight} kg` : 'kg'}
+                                    value={s.weight}
+                                    onChange={(e) => handleSetChange(ex, idx, 'weight', e.target.value)}
+                                    className="w-16 sm:w-20 px-2.5 py-2 rounded-full bg-white text-xs font-extrabold text-[#141414] placeholder:text-[#9A7B74] outline-none text-center"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder={`${ex.reps}`}
+                                    value={s.reps}
+                                    onChange={(e) => handleSetChange(ex, idx, 'reps', e.target.value)}
+                                    className="w-16 sm:w-20 px-2.5 py-2 rounded-full bg-white text-xs font-extrabold text-[#141414] placeholder:text-[#9A7B74] outline-none text-center"
+                                  />
+                                </>
+                              ) : (
+                                <div className="flex-1 grid grid-cols-2 gap-1.5">
+                                  <div className="flex items-center gap-1 bg-white rounded-full px-2 py-1">
+                                    <span className="text-[10px] font-extrabold text-[#7A625D]">L</span>
                                     <input
                                       type="number"
                                       step="0.5"
-                                      placeholder={advice?.prevWeight || 'kg'}
+                                      placeholder="kg"
                                       value={s.weight}
                                       onChange={(e) => handleSetChange(ex, idx, 'weight', e.target.value)}
-                                      className="w-full mt-0.5 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-sm font-bold text-stone-800 focus:border-rose-400 outline-none"
+                                      className="w-full text-xs font-bold text-[#141414] outline-none text-center"
                                     />
-                                  </div>
-                                  <div className="flex-1 min-w-[85px]">
-                                    <label className="text-[10px] text-stone-400 font-medium block">
-                                      Powt. ({ex.reps})
-                                    </label>
                                     <input
                                       type="text"
-                                      placeholder={ex.reps}
+                                      placeholder="powt"
                                       value={s.reps}
                                       onChange={(e) => handleSetChange(ex, idx, 'reps', e.target.value)}
-                                      className="w-full mt-0.5 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-sm font-bold text-stone-800 focus:border-rose-400 outline-none"
+                                      className="w-full text-xs font-bold text-[#141414] outline-none text-center"
                                     />
                                   </div>
-                                </>
-                              ) : (
-                                <div className="flex-1 grid grid-cols-2 gap-2">
-                                  <div className="p-2 rounded-xl bg-white border border-rose-100">
-                                    <span className="text-[10px] font-bold text-rose-500 block">LEWA</span>
-                                    <div className="flex gap-1 mt-1">
-                                      <input
-                                        type="number"
-                                        step="0.5"
-                                        placeholder="kg"
-                                        value={s.weight}
-                                        onChange={(e) => handleSetChange(ex, idx, 'weight', e.target.value)}
-                                        className="w-1/2 px-2 py-1 rounded-lg bg-rose-50/40 border border-rose-200 text-xs font-bold text-stone-800"
-                                      />
-                                      <input
-                                        type="text"
-                                        placeholder="powt"
-                                        value={s.reps}
-                                        onChange={(e) => handleSetChange(ex, idx, 'reps', e.target.value)}
-                                        className="w-1/2 px-2 py-1 rounded-lg bg-rose-50/40 border border-rose-200 text-xs font-bold text-stone-800"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="p-2 rounded-xl bg-white border border-rose-100">
-                                    <span className="text-[10px] font-bold text-pink-500 block">PRAWA</span>
-                                    <div className="flex gap-1 mt-1">
-                                      <input
-                                        type="number"
-                                        step="0.5"
-                                        placeholder="kg"
-                                        value={s.weightRight}
-                                        onChange={(e) => handleSetChange(ex, idx, 'weightRight', e.target.value)}
-                                        className="w-1/2 px-2 py-1 rounded-lg bg-rose-50/40 border border-rose-200 text-xs font-bold text-stone-800"
-                                      />
-                                      <input
-                                        type="text"
-                                        placeholder="powt"
-                                        value={s.repsRight}
-                                        onChange={(e) => handleSetChange(ex, idx, 'repsRight', e.target.value)}
-                                        className="w-1/2 px-2 py-1 rounded-lg bg-rose-50/40 border border-rose-200 text-xs font-bold text-stone-800"
-                                      />
-                                    </div>
+                                  <div className="flex items-center gap-1 bg-white rounded-full px-2 py-1">
+                                    <span className="text-[10px] font-extrabold text-[#E0533C]">P</span>
+                                    <input
+                                      type="number"
+                                      step="0.5"
+                                      placeholder="kg"
+                                      value={s.weightRight}
+                                      onChange={(e) => handleSetChange(ex, idx, 'weightRight', e.target.value)}
+                                      className="w-full text-xs font-bold text-[#141414] outline-none text-center"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="powt"
+                                      value={s.repsRight}
+                                      onChange={(e) => handleSetChange(ex, idx, 'repsRight', e.target.value)}
+                                      className="w-full text-xs font-bold text-[#141414] outline-none text-center"
+                                    />
                                   </div>
                                 </div>
                               )}
 
-                              <div className="w-32">
-                                <label className="text-[10px] text-stone-400 font-medium block">Zapas (RIR)</label>
-                                <select
-                                  value={s.rir}
-                                  onChange={(e) => handleSetChange(ex, idx, 'rir', e.target.value)}
-                                  className={`w-full mt-0.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold outline-none ${
-                                    s.rir === '2'
-                                      ? 'bg-rose-50 border-rose-300 text-rose-700'
-                                      : s.rir === '5+'
-                                      ? 'bg-amber-50 border-amber-300 text-amber-800'
-                                      : 'bg-white border-rose-200 text-stone-700'
-                                  }`}
+                              <select
+                                value={s.rir}
+                                onChange={(e) => handleSetChange(ex, idx, 'rir', e.target.value)}
+                                className="flex-1 min-w-[72px] px-2 py-2 rounded-full bg-white text-xs font-bold text-[#141414] outline-none text-center"
+                              >
+                                <option value="2">RIR 2</option>
+                                <option value="1">RIR 1</option>
+                                <option value="0">RIR 0</option>
+                                <option value="3-4">RIR 3-4</option>
+                                <option value="5+">RIR 5+</option>
+                              </select>
+
+                              {/* Dedykowany stoper PRACY tylko tam, gdzie ćwiczenie jest na sekundy (Copenhagen 30s / Plank 60s) */}
+                              {ex.timedSeconds && (
+                                <button
+                                  onClick={() =>
+                                    startBottomTimer(
+                                      ex.timedSeconds,
+                                      `${ex.name} (Seria ${idx + 1})`,
+                                      'WORK',
+                                      ex.rest || 0
+                                    )
+                                  }
+                                  title="Odliczaj czas trzymania pozycji"
+                                  className="px-3 py-2 rounded-full bg-white hover:bg-[#141414] text-[#141414] hover:text-white font-bold text-xs flex items-center gap-1 transition shadow-sm"
                                 >
-                                  <option value="2">RIR 2 (Cel 🎯)</option>
-                                  <option value="1">RIR 1 (Ciężko)</option>
-                                  <option value="0">RIR 0 (Max)</option>
-                                  <option value="3-4">RIR 3-4 (Zapas)</option>
-                                  <option value="5+">RIR 5+ (Rozgrz.!)</option>
-                                </select>
-                              </div>
+                                  <Timer className="w-3.5 h-3.5 text-[#E0533C]" />
+                                  <span>{ex.timedSeconds}s</span>
+                                </button>
+                              )}
 
                               <button
                                 onClick={() => handleToggleSetDone(ex, idx)}
-                                className={`mt-4 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 transition ${
+                                className={`px-3.5 py-2 rounded-full font-bold text-xs flex items-center justify-center gap-1 transition ${
                                   s.done
-                                    ? 'bg-rose-500 text-white shadow-sm shadow-rose-200'
-                                    : 'bg-rose-100 hover:bg-rose-500 text-rose-700 hover:text-white'
+                                    ? 'bg-[#141414] text-white'
+                                    : 'bg-[#F8B4A6] hover:bg-[#141414] text-[#141414] hover:text-white'
                                 }`}
                               >
-                                <Check className="w-4 h-4" />
-                                <span>{s.done ? 'Gotowe' : 'Zrób'}</span>
+                                <Check className="w-3.5 h-3.5" />
                               </button>
                             </div>
 
                             {isTooLightWarmup && (
-                              <div className="flex items-center gap-2 text-[11px] text-amber-800 bg-amber-100/70 px-3 py-1.5 rounded-xl border border-amber-300">
-                                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
-                                <span>
-                                  <strong>Wskazówka Pawła:</strong> Przy zapasie 5+ powtórzeń seria jest rozgrzewkowa –
-                                  dołóż obciążenia!
-                                </span>
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#E0533C] px-2">
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                <span>RIR 5+ = seria zbyt lekka (rozgrzewkowa), dołóż ciężaru.</span>
                               </div>
                             )}
                           </div>
@@ -2577,22 +2508,22 @@ export default function App() {
 
                     <input
                       type="text"
-                      placeholder="Twoja notatka do ćwiczenia..."
+                      placeholder="Dodaj notatkę..."
                       value={exLog.note}
                       onChange={(e) => updateExerciseLog(ex, (c) => ({ ...c, note: e.target.value }))}
-                      className="w-full px-3.5 py-2 rounded-2xl bg-rose-50/40 border border-rose-100 text-xs text-stone-700 placeholder:text-stone-400 outline-none focus:border-rose-300"
+                      className="w-full px-4 py-2 rounded-full bg-[#FFF6F3] text-xs font-medium text-[#141414] placeholder:text-[#9A7B74] outline-none"
                     />
 
                     {isDemoOpen && (
-                      <div className="pt-3 border-t border-rose-100 grid sm:grid-cols-2 gap-3">
+                      <div className="pt-2 grid sm:grid-cols-2 gap-3">
                         <AnatomicalExerciseAnimator exercise={ex} />
 
-                        <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 flex flex-col justify-between space-y-3">
+                        <div className="bg-[#FFF6F3] rounded-[24px] p-3.5 flex flex-col justify-between space-y-3 border border-[#F3D5CE]">
                           <div>
-                            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700">
-                              Aktywne partie: {ex.muscles}
+                            <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#F9E5E0] text-[#141414]">
+                              {ex.muscles}
                             </span>
-                            <ul className="mt-2.5 space-y-1.5 text-xs text-stone-600 list-disc pl-4">
+                            <ul className="mt-2.5 space-y-1.5 text-xs font-medium text-[#5C4742] list-disc pl-4">
                               {ex.cues.map((c, i) => (
                                 <li key={i}>{c}</li>
                               ))}
@@ -2600,36 +2531,33 @@ export default function App() {
                           </div>
 
                           {uploadedVideo ? (
-                            <div className="pt-2 border-t border-rose-200/60 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-bold text-rose-600">
-                                  🎥 Twoje nagranie z tego tygodnia
-                                </span>
-                                <button
-                                  onClick={() => handleDeleteVideo(videoKey)}
-                                  className="text-[11px] text-stone-400 hover:text-rose-600 underline"
-                                >
-                                  Usuń
-                                </button>
-                              </div>
+                            <div className="space-y-2">
                               <video
                                 src={uploadedVideo.url}
                                 controls
                                 playsInline
-                                className="w-full h-40 object-cover rounded-xl bg-black"
+                                className="w-full h-36 object-cover rounded-[16px] bg-black"
                               />
-                              <button
-                                onClick={() => handleShareVideo(uploadedVideo)}
-                                className="w-full py-2 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
-                              >
-                                <Share2 className="w-3.5 h-3.5" />
-                                <span>Wyślij / Udostępnij Pawłowi</span>
-                              </button>
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => handleShareVideo(uploadedVideo)}
+                                  className="flex-1 py-2 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center justify-center gap-1"
+                                >
+                                  <Share2 className="w-3.5 h-3.5" />
+                                  <span>Wyślij Pawłowi</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteVideo(videoKey)}
+                                  className="px-3 py-2 rounded-full bg-white text-[#141414] text-xs font-bold"
+                                >
+                                  Usuń
+                                </button>
+                              </div>
                             </div>
                           ) : (
-                            <label className="cursor-pointer py-2.5 px-3 rounded-2xl border border-dashed border-rose-300 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold flex items-center justify-center gap-2 transition">
-                              <Upload className="w-4 h-4" />
-                              <span>+ Nagraj lub dodaj swój filmik z galerii</span>
+                            <label className="cursor-pointer py-2.5 px-3 rounded-full bg-[#F9E5E0] hover:bg-[#F8B4A6] text-[#141414] text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>+ Dodaj swój filmik z galerii</span>
                               <input
                                 type="file"
                                 accept="video/*"
@@ -2646,184 +2574,230 @@ export default function App() {
               })}
             </section>
 
-            {/* FINISHER */}
-            <section className="pt-2">
-              <div className="bg-gradient-to-br from-rose-100/80 via-pink-50/70 to-amber-50/50 border border-rose-200 rounded-3xl p-5 space-y-3 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-rose-500 text-white">
-                      FINISHER HYROX
-                    </span>
-                    <h3 className="text-base font-serif font-bold text-stone-800 mt-1">
-                      {currentWorkout.finisher.title}
-                    </h3>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {currentWorkout.finisher.type === 'EMOM' && (
-                      <button
-                        onClick={() =>
-                          setFinisherTimer({
-                            active: !finisherTimer.active,
-                            seconds: finisherTimer.active ? finisherTimer.seconds : 0,
-                            mode: 'EMOM',
-                            totalSeconds: 300
-                          })
-                        }
-                        className="px-4 py-2 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
-                      >
-                        {finisherTimer.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        <span>{finisherTimer.active ? 'Pauza EMOM' : 'Start EMOM 5:00'}</span>
-                      </button>
-                    )}
-
-                    {currentWorkout.finisher.type === 'AMRAP' && (
-                      <button
-                        onClick={() =>
-                          setFinisherTimer({
-                            active: !finisherTimer.active,
-                            seconds: finisherTimer.active ? finisherTimer.seconds : 0,
-                            mode: 'AMRAP',
-                            totalSeconds: 360
-                          })
-                        }
-                        className="px-4 py-2 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
-                      >
-                        {finisherTimer.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        <span>{finisherTimer.active ? 'Pauza AMRAP' : 'Start AMRAP 6:00'}</span>
-                      </button>
-                    )}
-
-                    {currentWorkout.finisher.type === 'CIRCUIT' && (
-                      <button
-                        onClick={() =>
-                          setRestTimer({
-                            active: true,
-                            remaining: 120,
-                            total: 120,
-                            label: 'Przerwa między Obwodami (120s)'
-                          })
-                        }
-                        className="px-4 py-2 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
-                      >
-                        <Play className="w-4 h-4" />
-                        <span>Stoper przerwy 120s</span>
-                      </button>
-                    )}
-                  </div>
+            {/* FINISHER Z PASKIEM POSTĘPU CZASU */}
+            <section className="bg-[#F8B4A6] rounded-[30px] p-5 space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#141414] text-white">
+                    Finisher
+                  </span>
+                  <h3 className="text-lg font-extrabold text-[#141414] mt-1.5">
+                    {currentWorkout.finisher.title}
+                  </h3>
                 </div>
 
-                <p className="text-xs text-stone-600">{currentWorkout.finisher.description}</p>
+                {currentWorkout.finisher.type === 'EMOM' && (
+                  <button
+                    onClick={() => toggleFinisherTimer('EMOM', 300)}
+                    className="px-4 py-2.5 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center gap-1.5"
+                  >
+                    {finisherTimer.active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    <span>{finisherTimer.active ? 'Pauza' : 'Start 5:00'}</span>
+                  </button>
+                )}
 
-                <ul className="space-y-1.5 text-xs text-stone-700 font-semibold bg-white/80 p-3.5 rounded-2xl border border-rose-100">
-                  {currentWorkout.finisher.tasks.map((t, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[11px] font-bold">
-                        {i + 1}
-                      </span>
-                      <span>{t}</span>
-                    </li>
-                  ))}
-                </ul>
+                {currentWorkout.finisher.type === 'AMRAP' && (
+                  <button
+                    onClick={() => toggleFinisherTimer('AMRAP', 360)}
+                    className="px-4 py-2.5 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center gap-1.5"
+                  >
+                    {finisherTimer.active ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    <span>{finisherTimer.active ? 'Pauza' : 'Start 6:00'}</span>
+                  </button>
+                )}
 
-                {(finisherTimer.active || finisherTimer.seconds > 0) && (
-                  <div className="p-3.5 rounded-2xl bg-white border border-rose-300 flex items-center justify-between">
+                {currentWorkout.finisher.type === 'CIRCUIT' && (
+                  <button
+                    onClick={() => startBottomTimer(120, 'Przerwa między Obwodami', 'REST', 0)}
+                    className="px-4 py-2.5 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center gap-1.5"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    <span>Przerwa 120s</span>
+                  </button>
+                )}
+              </div>
+
+              <p className="text-xs font-semibold text-[#141414]/80">{currentWorkout.finisher.description}</p>
+
+              <ul className="space-y-1.5 text-xs font-bold text-[#141414] bg-[#FFF6F3] p-3.5 rounded-[22px]">
+                {currentWorkout.finisher.tasks.map((t, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-[#141414] text-white flex items-center justify-center text-[10px]">
+                      {i + 1}
+                    </span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {(finisherTimer.active || finisherTimer.seconds > 0) && (
+                <div className="p-4 rounded-[22px] bg-[#141414] text-white space-y-2.5">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-rose-500">
-                        {finisherTimer.mode} • Runda {Math.floor(finisherTimer.seconds / 60) + 1}
+                      <span className="text-[10px] font-bold uppercase text-[#F8B4A6]">
+                        {finisherTimer.mode} • Minuta {Math.min(Math.floor(finisherTimer.seconds / 60) + 1, Math.ceil(finisherTimer.totalSeconds / 60))}
                       </span>
-                      <p className="text-2xl font-black text-stone-800 font-mono">
+                      <p className="text-2xl font-extrabold font-mono">
                         {String(Math.floor((finisherTimer.totalSeconds - finisherTimer.seconds) / 60)).padStart(2, '0')}:
                         {String((finisherTimer.totalSeconds - finisherTimer.seconds) % 60).padStart(2, '0')}
                       </p>
                     </div>
+                    {finisherTimer.mode === 'EMOM' && (
+                      <div className="text-right">
+                        <span className="text-[10px] text-white/60 block">Do nowej minuty</span>
+                        <span className="text-lg font-extrabold font-mono text-[#F8B4A6]">
+                          {60 - (finisherTimer.seconds % 60)}s
+                        </span>
+                      </div>
+                    )}
                     <button
-                      onClick={() => setFinisherTimer({ active: false, seconds: 0, mode: 'EMOM', totalSeconds: 300 })}
-                      className="p-2 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100"
+                      onClick={() =>
+                        setFinisherTimer({ active: false, seconds: 0, mode: 'EMOM', totalSeconds: 300, startTime: 0 })
+                      }
+                      className="p-2 rounded-full bg-white/15 text-white"
                     >
                       <RotateCcw className="w-4 h-4" />
                     </button>
                   </div>
-                )}
 
-                <div className="grid sm:grid-cols-3 gap-2 pt-1">
-                  <input
-                    type="text"
-                    placeholder="Wynik (np. 4 rundy / 5x4 kcal)"
-                    value={currentFinisherLog.rounds}
-                    onChange={(e) => updateFinisherLog('rounds', e.target.value)}
-                    className="px-3.5 py-2 rounded-full bg-white border border-rose-200 text-xs text-stone-700 outline-none"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Czas / obciążenie"
-                    value={currentFinisherLog.kcalOrTime}
-                    onChange={(e) => updateFinisherLog('kcalOrTime', e.target.value)}
-                    className="px-3.5 py-2 rounded-full bg-white border border-rose-200 text-xs text-stone-700 outline-none"
-                  />
-                  <button
-                    onClick={() => updateFinisherLog('completed', !currentFinisherLog.completed)}
-                    className={`px-4 py-2 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition ${
-                      currentFinisherLog.completed
-                        ? 'bg-rose-500 text-white shadow-sm'
-                        : 'bg-white text-rose-600 border border-rose-200 hover:bg-rose-50'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{currentFinisherLog.completed ? 'Finisher Zrobiony!' : 'Odhacz Finisher'}</span>
-                  </button>
+                  {/* Pasek postępu Finishera */}
+                  <div className="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#F8B4A6] transition-all duration-300 rounded-full"
+                      style={{ width: `${finisherPercent}%` }}
+                    />
+                  </div>
                 </div>
+              )}
+
+              <div className="grid sm:grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  placeholder="Wynik (np. 4 rundy)"
+                  value={currentFinisherLog.rounds}
+                  onChange={(e) => updateFinisherLog('rounds', e.target.value)}
+                  className="px-4 py-2.5 rounded-full bg-[#FFF6F3] text-xs font-bold text-[#141414] placeholder:text-[#9A7B74] outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Ciężar / czas"
+                  value={currentFinisherLog.kcalOrTime}
+                  onChange={(e) => updateFinisherLog('kcalOrTime', e.target.value)}
+                  className="px-4 py-2.5 rounded-full bg-[#FFF6F3] text-xs font-bold text-[#141414] placeholder:text-[#9A7B74] outline-none"
+                />
+                <button
+                  onClick={() => updateFinisherLog('completed', !currentFinisherLog.completed)}
+                  className={`px-4 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                    currentFinisherLog.completed
+                      ? 'bg-[#141414] text-white'
+                      : 'bg-[#FFF6F3] text-[#141414]'
+                  }`}
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{currentFinisherLog.completed ? 'Zrobione' : 'Zaliczone'}</span>
+                </button>
               </div>
             </section>
           </div>
         )}
       </main>
 
-      {/* PŁYWAJĄCY STOPER PRZERWY */}
-      {restTimer.active && (
-        <div className="fixed bottom-4 inset-x-4 max-w-md mx-auto z-40 bg-white/95 backdrop-blur-md border-2 border-rose-400 rounded-3xl p-4 shadow-xl flex items-center justify-between gap-3">
-          <div>
-            <span className="text-[10px] font-bold uppercase text-rose-500 block">
-              Przerwa • {restTimer.label}
-            </span>
-            <span className="text-2xl font-black font-mono text-stone-800">
-              {Math.floor(restTimer.remaining / 60)}:{String(restTimer.remaining % 60).padStart(2, '0')}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setRestTimer((prev) => ({ ...prev, remaining: Math.max(0, prev.remaining - 15) }))}
-              className="px-2.5 py-1.5 rounded-full bg-rose-50 text-xs font-bold text-rose-700 border border-rose-200"
-            >
-              -15s
-            </button>
-            <button
-              onClick={() => setRestTimer((prev) => ({ ...prev, remaining: prev.remaining + 15 }))}
-              className="px-2.5 py-1.5 rounded-full bg-rose-50 text-xs font-bold text-rose-700 border border-rose-200"
-            >
-              +15s
-            </button>
-            <button
-              onClick={() => setRestTimer({ active: false, remaining: 0, total: 0, label: '' })}
-              className="px-3.5 py-1.5 rounded-full bg-rose-500 text-white text-xs font-bold"
-            >
-              Pomiń
-            </button>
-          </div>
-        </div>
-      )}
+      {/* DOLNA CZARNA PASTYLKA STOPERA Z PŁYNNYM PASKIEM PROGRESU */}
+      <div className="fixed bottom-5 inset-x-4 max-w-sm mx-auto z-40">
+        {bottomTimer.active ? (
+          <div
+            className={`relative overflow-hidden rounded-full pl-5 pr-2 py-2.5 shadow-2xl flex items-center justify-between gap-2 transition-colors ${
+              bottomTimer.remaining <= 3 ? 'bg-[#E0533C] text-white' : 'bg-[#141414] text-white'
+            }`}
+          >
+            {/* Dolny pasek postępu wypełniający pastylkę */}
+            <div
+              className="absolute bottom-0 left-0 h-1 bg-[#F8B4A6] transition-all duration-300"
+              style={{ width: `${bottomTimerPercent}%` }}
+            />
 
-      {/* MODAL RAPORTU */}
-      {showReportModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-rose-200 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between">
-              <h3 className="font-serif font-bold text-base text-stone-800">Gotowy raport dla Pawcia 🐻</h3>
-              <button onClick={() => setShowReportModal(false)} className="text-stone-400 hover:text-stone-700 text-sm">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span
+                className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                  bottomTimer.mode === 'WORK' ? 'bg-[#E0533C] text-white' : 'bg-white/15 text-[#F8B4A6]'
+                }`}
+              >
+                {bottomTimer.mode === 'WORK' ? 'TRZYMAJ' : 'PRZERWA'}
+              </span>
+              <span className="text-lg font-extrabold font-mono">
+                {Math.floor(bottomTimer.remaining / 60)}:{String(bottomTimer.remaining % 60).padStart(2, '0')}
+              </span>
+              <span className="text-xs font-semibold text-white/70 truncate">
+                {bottomTimer.label}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => adjustBottomTimer(-15)}
+                className="px-2 py-1 rounded-full bg-white/15 text-[10px] font-bold"
+              >
+                -15s
+              </button>
+              <button
+                onClick={() => adjustBottomTimer(15)}
+                className="px-2 py-1 rounded-full bg-white/15 text-[10px] font-bold"
+              >
+                +15s
+              </button>
+              <button
+                onClick={togglePauseBottomTimer}
+                className="w-7 h-7 rounded-full bg-white/15 text-white flex items-center justify-center"
+              >
+                {bottomTimer.paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={() => setBottomTimer((prev) => ({ ...prev, active: false, remaining: 0 }))}
+                className="w-7 h-7 rounded-full bg-white text-[#141414] flex items-center justify-center font-bold text-xs"
+              >
                 ✕
               </button>
             </div>
-            <pre className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-100 text-xs text-stone-700 whitespace-pre-wrap font-mono max-h-80 overflow-y-auto">
+          </div>
+        ) : (
+          <div className="relative overflow-hidden bg-[#141414] text-white rounded-full pl-5 pr-2 py-2 shadow-2xl flex items-center justify-between">
+            <div
+              className="absolute bottom-0 left-0 h-1 bg-[#E0533C] transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+            <div>
+              <span className="text-[11px] font-semibold text-white/60 block">
+                Trening {selectedWorkout} • Tydz. {selectedWeek}
+              </span>
+              <span className="text-sm font-extrabold">
+                {completedMainSets} z {totalMainSets} serii ({progressPercent}%)
+              </span>
+            </div>
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="px-4 py-2 rounded-full bg-white text-[#141414] font-extrabold text-xs flex items-center gap-1.5"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>Raport</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* MODAL RAPORTU */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#FFF6F3] rounded-[32px] max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-lg text-[#141414]">Podsumowanie treningu</h3>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="w-8 h-8 rounded-full bg-[#F9E5E0] text-[#141414] font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            <pre className="p-4 rounded-[22px] bg-[#F9E5E0] text-xs text-[#141414] whitespace-pre-wrap font-mono max-h-80 overflow-y-auto">
               {generatePawelReport()}
             </pre>
             <button
@@ -2832,10 +2806,10 @@ export default function App() {
                 setCopiedReport(true);
                 setTimeout(() => setCopiedReport(false), 2500);
               }}
-              className="w-full py-2.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
+              className="w-full py-3 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center justify-center gap-2"
             >
               <Copy className="w-4 h-4" />
-              <span>{copiedReport ? 'Skopiowano do schowka!' : 'Kopiuj raport dla Pawła'}</span>
+              <span>{copiedReport ? 'Skopiowano!' : 'Kopiuj raport'}</span>
             </button>
           </div>
         </div>
@@ -2843,28 +2817,28 @@ export default function App() {
 
       {/* MODAL KOPII ZAPASOWEJ */}
       {showBackupModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-rose-200 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#FFF6F3] rounded-[32px] max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h3 className="font-serif font-bold text-base text-stone-800 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-rose-500" />
-                <span>Kopia zapasowa treningów</span>
-              </h3>
-              <button onClick={() => setShowBackupModal(false)} className="text-stone-400 hover:text-stone-700 text-sm">
+              <h3 className="font-extrabold text-lg text-[#141414]">Kopia zapasowa</h3>
+              <button
+                onClick={() => setShowBackupModal(false)}
+                className="w-8 h-8 rounded-full bg-[#F9E5E0] text-[#141414] font-bold text-sm"
+              >
                 ✕
               </button>
             </div>
             <div className="grid gap-2.5">
               <button
                 onClick={handleExportBackup}
-                className="w-full py-2.5 px-4 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
+                className="w-full py-3 px-4 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                <span>Pobierz kopię zapasową (.json)</span>
+                <span>Pobierz plik zapasowy (.json)</span>
               </button>
-              <label className="cursor-pointer w-full py-2.5 px-4 rounded-full bg-rose-50 text-rose-700 font-bold text-xs flex items-center justify-center gap-2 border border-rose-200">
+              <label className="cursor-pointer w-full py-3 px-4 rounded-full bg-[#F9E5E0] text-[#141414] font-bold text-xs flex items-center justify-center gap-2">
                 <Upload className="w-4 h-4" />
-                <span>Wczytaj kopię zapasową z pliku</span>
+                <span>Wczytaj plik zapasowy</span>
                 <input type="file" accept="application/json" className="hidden" onChange={handleImportBackup} />
               </label>
             </div>
