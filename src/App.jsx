@@ -18,7 +18,8 @@ import {
   AlertTriangle,
   Share2,
   Activity,
-  Timer
+  Timer,
+  Film
 } from 'lucide-react';
 
 // --- BAZA DANYCH PLANU TRENINGOWEGO ---
@@ -1310,17 +1311,21 @@ function AnatomicalExerciseAnimator({ exercise }) {
   );
 }
 
-// --- INDEXED-DB DO ZAPISU FILMIKÓW ---
-const DB_NAME = 'HyroxAsiaVideoDB_v2';
-const STORE_NAME = 'exercise_videos';
+// --- PODWÓJNA BAZA DANYCH (INDEXED-DB + LOCALSTORAGE) GWARANTUJĄCA ZAPIS PO ZAMKNIĘCIU KARTY NA IPHONIE ---
+const DB_NAME = 'HyroxAsiaVideoDB_v3';
+const VIDEO_STORE = 'exercise_videos';
+const STATE_STORE = 'app_state';
 
-const openVideoDB = () => {
+const openAppDB = () => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(DB_NAME, 2);
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+      if (!db.objectStoreNames.contains(VIDEO_STORE)) {
+        db.createObjectStore(VIDEO_STORE, { keyPath: 'key' });
+      }
+      if (!db.objectStoreNames.contains(STATE_STORE)) {
+        db.createObjectStore(STATE_STORE, { keyPath: 'id' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -1328,11 +1333,40 @@ const openVideoDB = () => {
   });
 };
 
+// Zapis pełnego stanu treningów także do IndexedDB (odporny na zamknięcie karty ze skrótu ekranu głównego)
+const saveStateToIDB = async (stateObj) => {
+  try {
+    const db = await openAppDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STATE_STORE, 'readwrite');
+      tx.objectStore(STATE_STORE).put({ id: 'main_backup', ...stateObj, updatedAt: Date.now() });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+};
+
+const loadStateFromIDB = async () => {
+  try {
+    const db = await openAppDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STATE_STORE, 'readonly');
+      const req = tx.objectStore(STATE_STORE).get('main_backup');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+};
+
 const saveVideoBlobToDB = async (key, file, meta = {}) => {
-  const db = await openVideoDB();
+  const db = await openAppDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put({
+    const tx = db.transaction(VIDEO_STORE, 'readwrite');
+    tx.objectStore(VIDEO_STORE).put({
       key,
       blob: file,
       name: file.name || 'nagranie.mp4',
@@ -1345,20 +1379,20 @@ const saveVideoBlobToDB = async (key, file, meta = {}) => {
 };
 
 const getAllVideosFromDB = async () => {
-  const db = await openVideoDB();
+  const db = await openAppDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).getAll();
+    const tx = db.transaction(VIDEO_STORE, 'readonly');
+    const req = tx.objectStore(VIDEO_STORE).getAll();
     req.onsuccess = () => resolve(req.result || []);
     req.onerror = () => reject(req.error);
   });
 };
 
 const deleteVideoFromDB = async (key) => {
-  const db = await openVideoDB();
+  const db = await openAppDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete(key);
+    const tx = db.transaction(VIDEO_STORE, 'readwrite');
+    tx.objectStore(VIDEO_STORE).delete(key);
     tx.oncomplete = () => resolve(true);
     tx.onerror = () => reject(tx.error);
   });
@@ -1385,7 +1419,10 @@ export default function App() {
     const saved = localStorage.getItem('hyrox_selected_week');
     return saved ? Number(saved) : 1;
   });
-  const [selectedWorkout, setSelectedWorkout] = useState(1);
+  const [selectedWorkout, setSelectedWorkout] = useState(() => {
+    const saved = localStorage.getItem('hyrox_selected_workout');
+    return saved ? Number(saved) : 1;
+  });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [wakeLockActive, setWakeLockActive] = useState(false);
 
@@ -1414,8 +1451,6 @@ export default function App() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [copiedReport, setCopiedReport] = useState(false);
 
-  // Główny stoper na dole (przerwy między seriami + ćwiczenia na czas jak Plank i Copenhagen)
-  // { active, paused, mode: 'REST' | 'WORK', remaining, total, endTime, label, nextRest }
   const [bottomTimer, setBottomTimer] = useState({
     active: false,
     paused: false,
@@ -1427,7 +1462,6 @@ export default function App() {
     nextRest: 0
   });
 
-  // Stoper Finishera (odporny na blokadę ekranu dzięki startTime)
   const [finisherTimer, setFinisherTimer] = useState({
     active: false,
     seconds: 0,
@@ -1439,18 +1473,76 @@ export default function App() {
   const wakeLockRef = useRef(null);
   const lastBeepSecRef = useRef(-1);
   const lastFinisherBeepRef = useRef(-1);
+  const latestStateRef = useRef({ logs, finisherLogs, selectedWeek, selectedWorkout });
 
+  // Aktualizacja referencji do natychmiastowego zapisu przy zamykaniu karty na iPhonie
   useEffect(() => {
-    localStorage.setItem('hyrox_asia_logs_v3', JSON.stringify(logs));
-  }, [logs]);
+    latestStateRef.current = { logs, finisherLogs, selectedWeek, selectedWorkout };
+  }, [logs, finisherLogs, selectedWeek, selectedWorkout]);
 
+  // Prośba do systemu iOS/Safari o trwałą pamięć (nieusuwalną po zamknięciu ze skrótu) + odzyskiwanie z IndexedDB
   useEffect(() => {
-    localStorage.setItem('hyrox_asia_finishers_v3', JSON.stringify(finisherLogs));
-  }, [finisherLogs]);
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().catch(() => {});
+    }
 
+    // Jeśli localStorage byłby pusty po otwarciu skrótu, przywróć automatycznie z IndexedDB
+    loadStateFromIDB().then((idbData) => {
+      if (!idbData) return;
+      setLogs((currLogs) => {
+        if (Object.keys(currLogs).length === 0 && idbData.logs && Object.keys(idbData.logs).length > 0) {
+          localStorage.setItem('hyrox_asia_logs_v3', JSON.stringify(idbData.logs));
+          return idbData.logs;
+        }
+        return currLogs;
+      });
+      setFinisherLogs((currFin) => {
+        if (Object.keys(currFin).length === 0 && idbData.finisherLogs && Object.keys(idbData.finisherLogs).length > 0) {
+          localStorage.setItem('hyrox_asia_finishers_v3', JSON.stringify(idbData.finisherLogs));
+          return idbData.finisherLogs;
+        }
+        return currFin;
+      });
+    });
+
+    // Wymuś zapis w ułamku sekundy, gdy użytkownik wyrzuca kartę z ostatnich aplikacji na telefonie
+    const flushSaveOnClose = () => {
+      const { logs: l, finisherLogs: f, selectedWeek: w, selectedWorkout: wo } = latestStateRef.current;
+      try {
+        localStorage.setItem('hyrox_asia_logs_v3', JSON.stringify(l));
+        localStorage.setItem('hyrox_asia_finishers_v3', JSON.stringify(f));
+        localStorage.setItem('hyrox_selected_week', String(w));
+        localStorage.setItem('hyrox_selected_workout', String(wo));
+        saveStateToIDB({ logs: l, finisherLogs: f, selectedWeek: w, selectedWorkout: wo });
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener('pagehide', flushSaveOnClose);
+    window.addEventListener('beforeunload', flushSaveOnClose);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushSaveOnClose();
+    });
+
+    return () => {
+      window.removeEventListener('pagehide', flushSaveOnClose);
+      window.removeEventListener('beforeunload', flushSaveOnClose);
+    };
+  }, []);
+
+  // Bieżący zapis przy każdej zmianie (localStorage + IndexedDB)
   useEffect(() => {
-    localStorage.setItem('hyrox_selected_week', String(selectedWeek));
-  }, [selectedWeek]);
+    try {
+      localStorage.setItem('hyrox_asia_logs_v3', JSON.stringify(logs));
+      localStorage.setItem('hyrox_asia_finishers_v3', JSON.stringify(finisherLogs));
+      localStorage.setItem('hyrox_selected_week', String(selectedWeek));
+      localStorage.setItem('hyrox_selected_workout', String(selectedWorkout));
+      saveStateToIDB({ logs, finisherLogs, selectedWeek, selectedWorkout });
+    } catch (e) {
+      console.error(e);
+    }
+  }, [logs, finisherLogs, selectedWeek, selectedWorkout]);
 
   const refreshVideosFromDB = async () => {
     try {
@@ -1511,7 +1603,6 @@ export default function App() {
     }
   };
 
-  // Start stopera przerwy lub ćwiczenia na czas (Plank / Copenhagen)
   const startBottomTimer = (seconds, label, mode = 'REST', nextRest = 0) => {
     lastBeepSecRef.current = -1;
     setBottomTimer({
@@ -1555,7 +1646,6 @@ export default function App() {
     });
   };
 
-  // Odliczanie dolnego stopera oparte o Date.now() (działa dokładnie nawet po zablokowaniu iPhone'a)
   useEffect(() => {
     if (!bottomTimer.active || bottomTimer.paused) return;
 
@@ -1571,7 +1661,6 @@ export default function App() {
 
       if (rem <= 0) {
         playBeep(1046, 0.35);
-        // Jeśli to był stoper pracy (np. Plank 60s) i ćwiczenie ma przerwę, automatycznie odpal przerwę
         if (bottomTimer.mode === 'WORK' && bottomTimer.nextRest > 0) {
           startBottomTimer(bottomTimer.nextRest, `Przerwa po: ${bottomTimer.label}`, 'REST', 0);
         } else {
@@ -1585,7 +1674,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [bottomTimer]);
 
-  // Odliczanie stopera Finishera oparte o Date.now()
   useEffect(() => {
     if (!finisherTimer.active) return;
 
@@ -1729,6 +1817,7 @@ export default function App() {
     const key = `w${selectedWeek}_${exercise.id}`;
     await saveVideoBlobToDB(key, file, {
       week: selectedWeek,
+      workoutId: selectedWorkout,
       exerciseId: exercise.id,
       exerciseName: exercise.name
     });
@@ -1737,15 +1826,20 @@ export default function App() {
     setOpenDemos((prev) => ({ ...prev, [exercise.id]: true }));
   };
 
-  const handleDeleteVideo = async (key) => {
+  // Usuwanie filmiku (zarówno z karty ćwiczenia, jak i z zakładki Wideo)
+  const handleDeleteVideo = async (key, exercise = null) => {
     await deleteVideoFromDB(key);
+    if (exercise) {
+      updateExerciseLog(exercise, (curr) => ({ ...curr, recordedForPawel: false }));
+    }
     await refreshVideosFromDB();
   };
 
   const handleShareVideo = async (videoObj) => {
     if (navigator.share && videoObj?.blob) {
       try {
-        const file = new File([videoObj.blob], `${videoObj.exerciseName.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`, {
+        const ext = videoObj.name?.split('.').pop() || 'mp4';
+        const file = new File([videoObj.blob], `${videoObj.exerciseName.replace(/[^a-zA-Z0-9]/g, '_')}.${ext}`, {
           type: videoObj.blob.type || 'video/mp4'
         });
         await navigator.share({
@@ -1755,13 +1849,94 @@ export default function App() {
         });
         return;
       } catch {
-        // fallback
+        // fallback do pobrania
       }
     }
     const a = document.createElement('a');
     a.href = videoObj.url;
     a.download = `${videoObj.exerciseName}_Tydzien_${videoObj.week}.mp4`;
     a.click();
+  };
+
+  // Pobierz listę wszystkich wideo przypisanych do bieżącego treningu i tygodnia
+  const getCurrentWorkoutVideos = () => {
+    const workout = WORKOUT_PLAN[selectedWorkout];
+    const allExercises = [...workout.warmup, ...workout.main];
+    const vids = [];
+    allExercises.forEach((ex) => {
+      const key = `w${selectedWeek}_${ex.id}`;
+      if (localVideos[key]) {
+        vids.push(localVideos[key]);
+      }
+    });
+    return vids;
+  };
+
+  // Udostępnij na iPhonie raport tekstowy RAZEM ze wszystkimi filmikami z dzisiejszego treningu
+  const handleShareReportWithVideos = async () => {
+    const reportText = generatePawelReport();
+    const workoutVideos = getCurrentWorkoutVideos();
+
+    if (navigator.share) {
+      try {
+        const filesToShare = workoutVideos
+          .filter((v) => v.blob)
+          .map((v, i) => {
+            const cleanName = v.exerciseName.replace(/[^a-zA-Z0-9]/g, '_');
+            return new File([v.blob], `${i + 1}_${cleanName}_T${selectedWeek}.mp4`, {
+              type: v.blob.type || 'video/mp4'
+            });
+          });
+
+        if (filesToShare.length > 0 && navigator.canShare && navigator.canShare({ files: filesToShare })) {
+          await navigator.share({
+            title: `Raport Hyrox • Tydzień ${selectedWeek}`,
+            text: reportText,
+            files: filesToShare
+          });
+          return;
+        } else {
+          await navigator.share({
+            title: `Raport Hyrox • Tydzień ${selectedWeek}`,
+            text: reportText
+          });
+          return;
+        }
+      } catch {
+        // Jeśli anulowano lub przeglądarka na PC, przejdź do pobrania paczki
+      }
+    }
+
+    handleDownloadReportAndVideos();
+  };
+
+  // Pobierz raport (.txt) oraz wszystkie filmiki (.mp4) z bieżącego treningu jednym kliknięciem
+  const handleDownloadReportAndVideos = () => {
+    const reportText = generatePawelReport();
+    const workoutVideos = getCurrentWorkoutVideos();
+
+    // 1. Pobierz plik tekstowy z raportem
+    const txtBlob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+    const txtUrl = URL.createObjectURL(txtBlob);
+    const txtLink = document.createElement('a');
+    txtLink.href = txtUrl;
+    txtLink.download = `Raport_Trening_${selectedWorkout}_Tydzien_${selectedWeek}.txt`;
+    document.body.appendChild(txtLink);
+    txtLink.click();
+    document.body.removeChild(txtLink);
+
+    // 2. Pobierz automatycznie wszystkie filmiki nagrane w tym treningu
+    workoutVideos.forEach((vid, idx) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = vid.url;
+        const cleanName = vid.exerciseName.replace(/[^a-zA-Z0-9]/g, '_');
+        a.download = `${idx + 1}_${cleanName}_Tydzien_${selectedWeek}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, (idx + 1) * 450);
+    });
   };
 
   const handleExportBackup = () => {
@@ -1800,6 +1975,7 @@ export default function App() {
 
   const generatePawelReport = () => {
     const workout = WORKOUT_PLAN[selectedWorkout];
+    const workoutVideos = getCurrentWorkoutVideos();
     const lines = [
       `RAPORT • TYDZIEŃ ${selectedWeek}`,
       `${workout.title}`,
@@ -1807,6 +1983,7 @@ export default function App() {
     ];
     workout.main.forEach((ex) => {
       const exLog = getExerciseLog(selectedWeek, ex);
+      const hasVideo = !!localVideos[`w${selectedWeek}_${ex.id}`];
       const completedSets = exLog.sets.filter((s) => s.done || s.weight || s.reps);
       if (completedSets.length > 0) {
         const setsStr = completedSets
@@ -1817,10 +1994,10 @@ export default function App() {
             return `${s.weight ? s.weight + 'kg' : 'BW'}×${s.reps || ex.reps} (RIR ${s.rir})`;
           })
           .join(', ');
-        lines.push(`✓ ${ex.name}: ${setsStr}${exLog.recordedForPawel ? ' [Wideo]' : ''}`);
+        lines.push(`✓ ${ex.name}: ${setsStr}${hasVideo ? ' [🎥 Wideo załączone]' : ''}`);
         if (exLog.note) lines.push(`  Notatka: ${exLog.note}`);
       } else {
-        lines.push(`- ${ex.name}: brak wpisu`);
+        lines.push(`- ${ex.name}: brak wpisu${hasVideo ? ' [🎥 Wideo załączone]' : ''}`);
       }
     });
 
@@ -1833,10 +2010,14 @@ export default function App() {
           : 'Zrobione'
       }`
     );
+    if (workoutVideos.length > 0) {
+      lines.push(`🎥 Nagrane filmiki z treningu (${workoutVideos.length}): ${workoutVideos.map((v) => v.exerciseName).join(', ')}`);
+    }
     return lines.join('\n');
   };
 
   const currentWorkout = WORKOUT_PLAN[selectedWorkout];
+  const currentWorkoutVideos = getCurrentWorkoutVideos();
   const currentFinisherLog = finisherLogs[selectedWeek]?.[selectedWorkout] || {
     rounds: '',
     kcalOrTime: '',
@@ -1864,13 +2045,11 @@ export default function App() {
   }, 0);
   const progressPercent = Math.round((completedMainSets / totalMainSets) * 100);
 
-  // Obliczenie % paska postępu dla dolnego stopera
   const bottomTimerPercent =
     bottomTimer.total > 0
       ? Math.min(100, Math.max(0, ((bottomTimer.total - bottomTimer.remaining) / bottomTimer.total) * 100))
       : 0;
 
-  // Obliczenie % paska postępu dla Finishera
   const finisherPercent =
     finisherTimer.totalSeconds > 0
       ? Math.min(100, Math.max(0, (finisherTimer.seconds / finisherTimer.totalSeconds) * 100))
@@ -1887,10 +2066,9 @@ export default function App() {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* GÓRNY OBSZAR W STYLU MAKIETY */}
+      {/* GÓRNY OBSZAR */}
       <div className="max-w-xl mx-auto px-4 pt-5 pb-4">
         <div className="flex items-center justify-between gap-2">
-          {/* Biała pastylka z wbudowanym paskiem postępu treningu */}
           <div className="flex-1 bg-white rounded-full px-4 py-2 flex flex-col justify-center shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2084,7 +2262,8 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => handleDeleteVideo(vid.key)}
-                          className="p-1.5 rounded-full bg-white text-[#141414]"
+                          title="Usuń ten filmik"
+                          className="p-1.5 rounded-full bg-[#E0533C] text-white"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -2182,7 +2361,12 @@ export default function App() {
                         </div>
 
                         <div className="flex items-center gap-1">
-                          <label className="cursor-pointer w-7 h-7 rounded-full bg-white text-[#141414] flex items-center justify-center shadow-sm">
+                          <label
+                            title={uploadedVideo ? 'Podmień filmik' : 'Dodaj filmik'}
+                            className={`cursor-pointer w-7 h-7 rounded-full flex items-center justify-center shadow-sm ${
+                              uploadedVideo ? 'bg-[#141414] text-white' : 'bg-white text-[#141414]'
+                            }`}
+                          >
                             <Video className="w-3.5 h-3.5" />
                             <input
                               type="file"
@@ -2191,6 +2375,16 @@ export default function App() {
                               onChange={(e) => handleVideoUpload(ex, e.target.files?.[0])}
                             />
                           </label>
+                          {/* Szybkie usuwanie błędnego filmiku z poziomu kafelka rozgrzewki */}
+                          {uploadedVideo && (
+                            <button
+                              onClick={() => handleDeleteVideo(videoKey, ex)}
+                              title="Usuń wgrany filmik"
+                              className="w-7 h-7 rounded-full bg-[#E0533C] text-white flex items-center justify-center shadow-sm"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
                             className={`w-7 h-7 rounded-full flex items-center justify-center transition ${
@@ -2228,12 +2422,21 @@ export default function App() {
                             ))}
                           </ul>
                           {uploadedVideo && (
-                            <video
-                              src={uploadedVideo.url}
-                              controls
-                              playsInline
-                              className="w-full h-32 object-cover rounded-[16px] bg-black"
-                            />
+                            <div className="space-y-1.5">
+                              <video
+                                src={uploadedVideo.url}
+                                controls
+                                playsInline
+                                className="w-full h-32 object-cover rounded-[16px] bg-black"
+                              />
+                              <button
+                                onClick={() => handleDeleteVideo(videoKey, ex)}
+                                className="w-full py-1.5 rounded-full bg-[#E0533C] text-white text-xs font-bold flex items-center justify-center gap-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Usuń ten filmik</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                       )}
@@ -2301,7 +2504,11 @@ export default function App() {
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <label className="cursor-pointer px-3 py-1.5 rounded-full bg-white text-[#141414] text-xs font-bold flex items-center gap-1 shadow-sm">
+                        <label
+                          className={`cursor-pointer px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm ${
+                            uploadedVideo ? 'bg-[#141414] text-white' : 'bg-white text-[#141414]'
+                          }`}
+                        >
                           <Video className="w-3.5 h-3.5" />
                           <span>{uploadedVideo ? 'Wideo ✓' : '+ Wideo'}</span>
                           <input
@@ -2311,6 +2518,17 @@ export default function App() {
                             onChange={(e) => handleVideoUpload(ex, e.target.files?.[0])}
                           />
                         </label>
+
+                        {/* Natychmiastowe usuwanie błędnego wideo prosto z karty ćwiczenia */}
+                        {uploadedVideo && (
+                          <button
+                            onClick={() => handleDeleteVideo(videoKey, ex)}
+                            title="Usuń błędny filmik"
+                            className="w-8 h-8 rounded-full bg-[#E0533C] text-white flex items-center justify-center shadow-sm"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
                         <button
                           onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
@@ -2464,7 +2682,6 @@ export default function App() {
                                 <option value="5+">RIR 5+</option>
                               </select>
 
-                              {/* Dedykowany stoper PRACY tylko tam, gdzie ćwiczenie jest na sekundy (Copenhagen 30s / Plank 60s) */}
                               {ex.timedSeconds && (
                                 <button
                                   onClick={() =>
@@ -2547,10 +2764,11 @@ export default function App() {
                                   <span>Wyślij Pawłowi</span>
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteVideo(videoKey)}
-                                  className="px-3 py-2 rounded-full bg-white text-[#141414] text-xs font-bold"
+                                  onClick={() => handleDeleteVideo(videoKey, ex)}
+                                  className="px-3 py-2 rounded-full bg-[#E0533C] text-white text-xs font-bold flex items-center gap-1"
                                 >
-                                  Usuń
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Usuń</span>
                                 </button>
                               </div>
                             </div>
@@ -2660,7 +2878,6 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Pasek postępu Finishera */}
                   <div className="w-full h-1.5 bg-white/15 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-[#F8B4A6] transition-all duration-300 rounded-full"
@@ -2710,7 +2927,6 @@ export default function App() {
               bottomTimer.remaining <= 3 ? 'bg-[#E0533C] text-white' : 'bg-[#141414] text-white'
             }`}
           >
-            {/* Dolny pasek postępu wypełniający pastylkę */}
             <div
               className="absolute bottom-0 left-0 h-1 bg-[#F8B4A6] transition-all duration-300"
               style={{ width: `${bottomTimerPercent}%` }}
@@ -2778,18 +2994,18 @@ export default function App() {
               className="px-4 py-2 rounded-full bg-white text-[#141414] font-extrabold text-xs flex items-center gap-1.5"
             >
               <Copy className="w-3.5 h-3.5" />
-              <span>Raport</span>
+              <span>Raport {currentWorkoutVideos.length > 0 ? `+ 🎥(${currentWorkoutVideos.length})` : ''}</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* MODAL RAPORTU */}
+      {/* MODAL RAPORTU Z OPCJĄ POBRANIA I WYSŁANIA RAZEM Z FILMIKAMI */}
       {showReportModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#FFF6F3] rounded-[32px] max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-[#FFF6F3] rounded-[32px] max-w-md w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-lg text-[#141414]">Podsumowanie treningu</h3>
+              <h3 className="font-extrabold text-lg text-[#141414]">Raport + Nagrane wideo</h3>
               <button
                 onClick={() => setShowReportModal(false)}
                 className="w-8 h-8 rounded-full bg-[#F9E5E0] text-[#141414] font-bold text-sm"
@@ -2797,20 +3013,73 @@ export default function App() {
                 ✕
               </button>
             </div>
-            <pre className="p-4 rounded-[22px] bg-[#F9E5E0] text-xs text-[#141414] whitespace-pre-wrap font-mono max-h-80 overflow-y-auto">
+
+            <pre className="p-4 rounded-[22px] bg-[#F9E5E0] text-xs text-[#141414] whitespace-pre-wrap font-mono max-h-60 overflow-y-auto">
               {generatePawelReport()}
             </pre>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(generatePawelReport());
-                setCopiedReport(true);
-                setTimeout(() => setCopiedReport(false), 2500);
-              }}
-              className="w-full py-3 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center justify-center gap-2"
-            >
-              <Copy className="w-4 h-4" />
-              <span>{copiedReport ? 'Skopiowano!' : 'Kopiuj raport'}</span>
-            </button>
+
+            {/* Podgląd filmików załączonych do dzisiejszego raportu z opcją usunięcia błędnego */}
+            {currentWorkoutVideos.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-extrabold uppercase tracking-wider text-[#7A625D]">
+                  Załączone filmiki z tego treningu ({currentWorkoutVideos.length}):
+                </p>
+                <div className="space-y-1.5">
+                  {currentWorkoutVideos.map((vid) => (
+                    <div
+                      key={vid.key}
+                      className="flex items-center justify-between bg-[#F9E5E0] px-3 py-2 rounded-full text-xs font-bold"
+                    >
+                      <span className="truncate pr-2">🎥 {vid.exerciseName}</span>
+                      <button
+                        onClick={() => handleDeleteVideo(vid.key)}
+                        title="Usuń ten filmik"
+                        className="p-1.5 rounded-full bg-[#E0533C] text-white shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              {/* Przycisk 1: Udostępnij na telefonie raport + wszystkie pliki MP4 naraz */}
+              <button
+                onClick={handleShareReportWithVideos}
+                className="w-full py-3 rounded-full bg-[#141414] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>
+                  Wyślij raport {currentWorkoutVideos.length > 0 ? `+ filmiki (${currentWorkoutVideos.length})` : ''}
+                </span>
+              </button>
+
+              {/* Przycisk 2: Pobierz raport (.txt) + wszystkie filmiki (.mp4) na urządzenie */}
+              <button
+                onClick={handleDownloadReportAndVideos}
+                className="w-full py-3 rounded-full bg-[#F8B4A6] text-[#141414] font-bold text-xs flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>
+                  Pobierz raport {currentWorkoutVideos.length > 0 ? `+ wszystkie filmiki (${currentWorkoutVideos.length})` : '(.txt)'}
+                </span>
+              </button>
+
+              {/* Przycisk 3: Szybkie kopiowanie samego tekstu */}
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatePawelReport());
+                  setCopiedReport(true);
+                  setTimeout(() => setCopiedReport(false), 2500);
+                }}
+                className="w-full py-2.5 rounded-full bg-white border border-[#141414]/15 text-[#141414] font-bold text-xs flex items-center justify-center gap-2"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedReport ? 'Skopiowano sam tekst!' : 'Kopiuj sam tekst raportu'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2828,6 +3097,9 @@ export default function App() {
                 ✕
               </button>
             </div>
+            <p className="text-xs font-medium text-[#7A625D]">
+              Dane i filmiki zapisują się automatycznie w trwałej pamięci telefonu (nawet po zamknięciu karty).
+            </p>
             <div className="grid gap-2.5">
               <button
                 onClick={handleExportBackup}
