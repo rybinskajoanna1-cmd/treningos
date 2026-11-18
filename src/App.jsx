@@ -10,7 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trophy,
-  Flame,
+  Heart,
   Copy,
   CheckCircle2,
   Volume2,
@@ -34,7 +34,7 @@ const WORKOUT_PLAN = {
   1: {
     id: 1,
     title: 'Trening 1: Nogi i Core',
-    subtitle: 'Siła dolnych partii, stabilizacja i SkiErg EMOM',
+    subtitle: 'Smukła siła dolnych partii, stabilizacja i SkiErg EMOM',
     warmup: [
       {
         id: 't1_w1',
@@ -302,7 +302,7 @@ const WORKOUT_PLAN = {
   2: {
     id: 2,
     title: 'Trening 2: Góra Ciała',
-    subtitle: 'Siła pchania i przyciągania + obwody kondycyjne',
+    subtitle: 'Smukła góra, pośladki + obwody kondycyjne',
     warmup: [
       {
         id: 't2_w1',
@@ -816,7 +816,7 @@ const WORKOUT_PLAN = {
   }
 };
 
-// --- ANATOMICZNY SYMULATOR SYLWETKI CZŁOWIEKA (100% WBUDOWANY W KOD, ZERO BLOKAD) ---
+// --- KOBIECY, JASNY SYMULATOR SYLWETKI 2D (PASTEL STUDIO AESTHETIC) ---
 function AnatomicalExerciseAnimator({ exercise }) {
   const [phase, setPhase] = useState(0);
   const [slowMo, setSlowMo] = useState(false);
@@ -830,8 +830,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
 
     const loop = (now) => {
       const elapsed = (now - start) % duration;
-      const rawProgress = elapsed / duration; // 0..1
-      // Płynna sinusoida 0 -> 1 -> 0
+      const rawProgress = elapsed / duration;
       const p = 0.5 - 0.5 * Math.cos(rawProgress * Math.PI * 2);
       setPhase(p);
       frameId = requestAnimationFrame(loop);
@@ -845,13 +844,13 @@ function AnatomicalExerciseAnimator({ exercise }) {
   const zones = exercise.activeZones || [];
   const isActive = (z) => zones.includes(z);
 
-  const skinColor = '#e2e8f0';
-  const activeMuscleColor = '#fb7185'; // Różowo-koralowy dla aktywnych partii
-  const activeGlow = 'rgba(244, 63, 94, 0.45)';
-  const outfitTop = '#f43f5e';
-  const outfitShorts = '#1e293b';
+  // Ciepła, kobieca paleta barw w animacji
+  const skinColor = '#f5cba7';
+  const skinBackColor = '#e5b28a';
+  const activeMuscleColor = '#e11d48'; // Głęboki róż malinowy dla pracujących mięśni
+  const outfitTop = '#f472b6'; // Pastelowy różowy top sportowy
+  const outfitShorts = '#9d174d'; // Burgundowo-wrzosowe spodenki
 
-  // Obliczanie współrzędnych stawów dla każdego typu ruchu (widok z boku / półprofilu, czytelne proporcje człowieka)
   let pose = {
     head: { x: 130, y: 46 },
     shoulder: { x: 130, y: 74 },
@@ -863,7 +862,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
     elbow: { x: 145, y: 100 },
     wrist: { x: 158, y: 88 },
     propType: exercise.equipment || 'none',
-    phaseLabel: phase < 0.3 ? 'Pozycja wyjściowa' : phase > 0.7 ? 'Szczytowe napięcie (RIR 2)' : 'Kontrola ruchu'
+    phaseLabel: phase < 0.3 ? 'Pozycja wyjściowa' : phase > 0.7 ? 'Szczytowe napięcie (RIR 2)' : 'Płynna kontrola ruchu'
   };
 
   const t = phase;
@@ -1051,7 +1050,6 @@ function AnatomicalExerciseAnimator({ exercise }) {
         elbowPos = { x: lerp(134, 156, t), y: lerp(106, 78, t) };
         wristPos = { x: lerp(138, 182, t), y: lerp(132, 76, t) };
       } else {
-        // Pallof / Face pull / Band
         elbowPos = { x: lerp(138, 154, t), y: 92 };
         wristPos = { x: lerp(148, 184, t), y: 88 };
       }
@@ -1114,7 +1112,6 @@ function AnatomicalExerciseAnimator({ exercise }) {
           phaseLabel: 'Stabilny tułów i płynny zakres ruchu'
         };
       } else {
-        // Plank / Copenhagen
         const lift = lerp(0, -6, t);
         pose = {
           ...pose,
@@ -1151,7 +1148,6 @@ function AnatomicalExerciseAnimator({ exercise }) {
           phaseLabel: t > 0.6 ? 'Mocny ciąg nogami i dociągnięcie uchwytu' : 'Powrót do przodu'
         };
       } else {
-        // Farmer walk
         const step = Math.sin(t * Math.PI * 2) * 14;
         pose = {
           ...pose,
@@ -1169,26 +1165,26 @@ function AnatomicalExerciseAnimator({ exercise }) {
   }
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col justify-between">
+    <div className="bg-white border border-rose-200 rounded-2xl overflow-hidden flex flex-col justify-between shadow-sm">
       {/* Pasek nagłówka symulatora */}
-      <div className="px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-rose-400 flex items-center gap-1.5">
-          <Activity className="w-3.5 h-3.5" /> Symulator ruchu 2D
+      <div className="px-3 py-2 bg-rose-50/80 border-b border-rose-100 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-rose-600 flex items-center gap-1.5">
+          <Activity className="w-3.5 h-3.5" /> Animacja techniki
         </span>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setSlowMo(!slowMo)}
-            className={`text-[10px] font-bold px-2 py-0.5 rounded border transition ${
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition ${
               slowMo
-                ? 'bg-amber-500 text-slate-950 border-amber-400'
-                : 'bg-slate-800 text-slate-300 border-slate-700'
+                ? 'bg-rose-500 text-white border-rose-500'
+                : 'bg-white text-stone-600 border-rose-200 hover:border-rose-300'
             }`}
           >
             {slowMo ? '0.5x Wolno' : '1.0x Tempo'}
           </button>
           <button
             onClick={() => setPaused(!paused)}
-            className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700"
+            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-stone-600 border border-rose-200"
           >
             {paused ? 'Start' : 'Pauza'}
           </button>
@@ -1196,7 +1192,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
             href={`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.ytQuery)}`}
             target="_blank"
             rel="noreferrer"
-            className="text-[11px] font-bold text-sky-400 hover:underline flex items-center gap-1 ml-1"
+            className="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-1 ml-1"
           >
             <span>YT</span>
             <ExternalLink className="w-3 h-3" />
@@ -1204,42 +1200,41 @@ function AnatomicalExerciseAnimator({ exercise }) {
         </div>
       </div>
 
-      {/* Okno SVG z anatomiczną sylwetką człowieka */}
-      <div className="relative w-full h-56 bg-gradient-to-b from-slate-900/60 to-slate-950 flex items-center justify-center">
+      {/* Jasne, kobiece studio SVG */}
+      <div className="relative w-full h-56 bg-gradient-to-b from-rose-50/40 via-amber-50/20 to-rose-100/40 flex items-center justify-center">
         <svg viewBox="0 0 260 225" className="w-full h-full">
-          {/* Linie siatki i podłoga */}
-          <line x1="20" y1="206" x2="240" y2="206" stroke="#334155" strokeWidth="3" strokeLinecap="round" />
-          <line x1="35" y1="206" x2="225" y2="206" stroke="#f43f5e" strokeWidth="1" strokeDasharray="4 6" opacity="0.5" />
+          {/* Podłoga studyjna / mata */}
+          <line x1="25" y1="206" x2="235" y2="206" stroke="#f9a8d4" strokeWidth="4" strokeLinecap="round" />
 
-          {/* Sprzęt treningowy w tle (ławka / skrzynia / piłka / wioślarz) */}
+          {/* Sprzęt treningowy w tle */}
           {(exercise.animType === 'bench_press' || exercise.animType === 'hip_thrust' || exercise.equipment === 'bench') && (
             <g>
-              <rect x="52" y="146" width="90" height="10" rx="4" fill="#334155" stroke="#475569" />
-              <line x1="65" y1="156" x2="65" y2="205" stroke="#475569" strokeWidth="5" />
-              <line x1="128" y1="156" x2="128" y2="205" stroke="#475569" strokeWidth="5" />
+              <rect x="52" y="146" width="90" height="10" rx="5" fill="#f472b6" />
+              <line x1="65" y1="156" x2="65" y2="205" stroke="#d6d3d1" strokeWidth="5" />
+              <line x1="128" y1="156" x2="128" y2="205" stroke="#d6d3d1" strokeWidth="5" />
             </g>
           )}
 
           {exercise.equipment === 'bench_back' && (
             <g>
-              <rect x="58" y="162" width="42" height="10" rx="3" fill="#334155" />
-              <line x1="68" y1="172" x2="68" y2="205" stroke="#475569" strokeWidth="4" />
-              <line x1="90" y1="172" x2="90" y2="205" stroke="#475569" strokeWidth="4" />
+              <rect x="58" y="162" width="42" height="10" rx="4" fill="#f472b6" />
+              <line x1="68" y1="172" x2="68" y2="205" stroke="#d6d3d1" strokeWidth="4" />
+              <line x1="90" y1="172" x2="90" y2="205" stroke="#d6d3d1" strokeWidth="4" />
             </g>
           )}
 
           {exercise.equipment === 'ball' && (
-            <circle cx={pose.ankleFront.x} cy="180" r="24" fill="#0ea5e9" fillOpacity="0.25" stroke="#38bdf8" strokeWidth="2.5" />
+            <circle cx={pose.ankleFront.x} cy="180" r="24" fill="#fbcfe8" fillOpacity="0.6" stroke="#f472b6" strokeWidth="2.5" />
           )}
 
-          {/* DALSZA NOGA (Tylna) */}
+          {/* DALSZA NOGA */}
           <line
             x1={pose.hip.x}
             y1={pose.hip.y}
             x2={pose.kneeBack.x}
             y2={pose.kneeBack.y}
-            stroke={isActive('hamstrings') || isActive('quads') ? '#be123c' : '#64748b'}
-            strokeWidth="12"
+            stroke={isActive('hamstrings') || isActive('quads') ? '#f43f5e' : skinBackColor}
+            strokeWidth="11"
             strokeLinecap="round"
           />
           <line
@@ -1247,42 +1242,41 @@ function AnatomicalExerciseAnimator({ exercise }) {
             y1={pose.kneeBack.y}
             x2={pose.ankleBack.x}
             y2={pose.ankleBack.y}
-            stroke="#64748b"
-            strokeWidth="9"
+            stroke={skinBackColor}
+            strokeWidth="8.5"
             strokeLinecap="round"
           />
-          {/* But tylny */}
-          <ellipse cx={pose.ankleBack.x + 4} cy={pose.ankleBack.y} rx="9" ry="4.5" fill="#475569" />
+          <ellipse cx={pose.ankleBack.x + 4} cy={pose.ankleBack.y} rx="9" ry="4.5" fill="#f9a8d4" />
 
-          {/* TUŁÓW (Anatomiczny kształt klatki, pleców i brzucha) */}
+          {/* TUŁÓW (Smukła sylwetka w różowym topie) */}
           <line
             x1={pose.shoulder.x}
             y1={pose.shoulder.y}
             x2={pose.hip.x}
             y2={pose.hip.y}
             stroke={isActive('core') || isActive('back') || isActive('chest') ? activeMuscleColor : outfitTop}
-            strokeWidth="20"
+            strokeWidth="18"
             strokeLinecap="round"
           />
 
-          {/* Podświetlenie pośladka (Glutes) */}
+          {/* Biodra / Pośladki */}
           <circle
             cx={pose.hip.x - 2}
             cy={pose.hip.y}
             r="11"
             fill={isActive('glutes') ? activeMuscleColor : outfitShorts}
-            stroke={isActive('glutes') ? '#fda4af' : 'none'}
+            stroke={isActive('glutes') ? '#fecdd3' : 'none'}
             strokeWidth="2"
           />
 
-          {/* BLIŻSZA NOGA (Przednia – udo + łydka + staw kolanowy) */}
+          {/* BLIŻSZA NOGA */}
           <line
             x1={pose.hip.x}
             y1={pose.hip.y}
             x2={pose.kneeFront.x}
             y2={pose.kneeFront.y}
             stroke={isActive('quads') || isActive('hamstrings') ? activeMuscleColor : skinColor}
-            strokeWidth="14"
+            strokeWidth="13"
             strokeLinecap="round"
           />
           <line
@@ -1291,48 +1285,45 @@ function AnatomicalExerciseAnimator({ exercise }) {
             x2={pose.ankleFront.x}
             y2={pose.ankleFront.y}
             stroke={skinColor}
-            strokeWidth="10"
+            strokeWidth="9.5"
             strokeLinecap="round"
           />
-          <circle cx={pose.kneeFront.x} cy={pose.kneeFront.y} r="5.5" fill="#f8fafc" />
-          {/* But sportowy przedni */}
+          <circle cx={pose.kneeFront.x} cy={pose.kneeFront.y} r="5" fill="#fff1f2" />
+          {/* Białe sneakersy z różowym akcentem */}
           <path
             d={`M ${pose.ankleFront.x - 6} ${pose.ankleFront.y - 3} L ${pose.ankleFront.x + 12} ${pose.ankleFront.y - 1} L ${pose.ankleFront.x + 13} ${pose.ankleFront.y + 4} L ${pose.ankleFront.x - 7} ${pose.ankleFront.y + 4} Z`}
-            fill="#f43f5e"
+            fill="#ffffff"
+            stroke="#f43f5e"
+            strokeWidth="1.5"
           />
 
-          {/* GŁOWA + SZYJA + KUCYK SPORTOWY */}
+          {/* GŁOWA + DŁUGI KUCYK */}
           <line
             x1={pose.shoulder.x}
             y1={pose.shoulder.y}
             x2={pose.head.x}
             y2={pose.head.y}
             stroke={skinColor}
-            strokeWidth="7"
+            strokeWidth="6.5"
             strokeLinecap="round"
           />
-          {/* Kucyk */}
+          {/* Kobiecy kucyk */}
           <path
-            d={`M ${pose.head.x - 10} ${pose.head.y - 4} Q ${pose.head.x - 24} ${pose.head.y - 10} ${pose.head.x - 22} ${pose.head.y + 6}`}
+            d={`M ${pose.head.x - 10} ${pose.head.y - 5} Q ${pose.head.x - 26} ${pose.head.y - 12} ${pose.head.x - 23} ${pose.head.y + 10}`}
             fill="none"
-            stroke="#fbbf24"
-            strokeWidth="5"
+            stroke="#b45309"
+            strokeWidth="5.5"
             strokeLinecap="round"
           />
-          <circle cx={pose.head.x} cy={pose.head.y} r="12.5" fill={skinColor} />
-          {/* Opaska sportowa */}
-          <path
-            d={`M ${pose.head.x - 11} ${pose.head.y - 4} Q ${pose.head.x} ${pose.head.y - 9} ${pose.head.x + 11} ${pose.head.y - 4}`}
-            fill="none"
-            stroke="#f43f5e"
-            strokeWidth="3.5"
-          />
+          <circle cx={pose.head.x} cy={pose.head.y} r="12" fill={skinColor} />
+          {/* Różowa gumka/opaska */}
+          <circle cx={pose.head.x - 11} cy={pose.head.y - 5} r="3" fill="#e11d48" />
 
           {/* RAMIĘ I PRZEDRAMIĘ */}
           <circle
             cx={pose.shoulder.x}
             cy={pose.shoulder.y}
-            r="8"
+            r="7.5"
             fill={isActive('shoulders') ? activeMuscleColor : outfitTop}
           />
           <line
@@ -1341,7 +1332,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
             x2={pose.elbow.x}
             y2={pose.elbow.y}
             stroke={isActive('arms') || isActive('shoulders') ? activeMuscleColor : skinColor}
-            strokeWidth="10"
+            strokeWidth="9"
             strokeLinecap="round"
           />
           <line
@@ -1350,19 +1341,19 @@ function AnatomicalExerciseAnimator({ exercise }) {
             x2={pose.wrist.x}
             y2={pose.wrist.y}
             stroke={isActive('arms') ? activeMuscleColor : skinColor}
-            strokeWidth="8.5"
+            strokeWidth="8"
             strokeLinecap="round"
           />
-          <circle cx={pose.wrist.x} cy={pose.wrist.y} r="4.5" fill="#f8fafc" />
+          <circle cx={pose.wrist.x} cy={pose.wrist.y} r="4" fill="#fff1f2" />
 
-          {/* AKCESORIA W DŁONIACH (Kettlebell / Sztanga / Hantle / Wyciąg) */}
+          {/* AKCESORIA W DŁONIACH */}
           {(exercise.equipment === 'kb_chest' ||
             exercise.equipment === 'kb_low' ||
             exercise.equipment === 'kb_overhead') && (
             <g transform={`translate(${pose.wrist.x}, ${pose.wrist.y})`}>
-              <path d="M -5 -4 C -5 -10, 5 -10, 5 -4" fill="none" stroke="#94a3b8" strokeWidth="3" />
-              <circle cx="0" cy="5" r="9.5" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1.5" />
-              <text x="0" y="8" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#0f172a">
+              <path d="M -5 -4 C -5 -10, 5 -10, 5 -4" fill="none" stroke="#a8a29e" strokeWidth="3" />
+              <circle cx="0" cy="5" r="9.5" fill="#f43f5e" stroke="#fda4af" strokeWidth="1.5" />
+              <text x="0" y="8" textAnchor="middle" fontSize="6.5" fontWeight="bold" fill="#ffffff">
                 KB
               </text>
             </g>
@@ -1370,8 +1361,8 @@ function AnatomicalExerciseAnimator({ exercise }) {
 
           {exercise.equipment === 'barbell' && (
             <g transform={`translate(${pose.wrist.x}, ${pose.wrist.y})`}>
-              <circle cx="0" cy="0" r="14" fill="#1e293b" stroke="#38bdf8" strokeWidth="3.5" />
-              <circle cx="0" cy="0" r="4" fill="#94a3b8" />
+              <circle cx="0" cy="0" r="14" fill="#fce7f3" stroke="#e11d48" strokeWidth="3.5" />
+              <circle cx="0" cy="0" r="4" fill="#f43f5e" />
             </g>
           )}
 
@@ -1379,7 +1370,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
             exercise.equipment === 'db_overhead' ||
             exercise.equipment === 'plate') && (
             <g transform={`translate(${pose.wrist.x}, ${pose.wrist.y})`}>
-              <rect x="-9" y="-4" width="18" height="8" rx="3" fill="#38bdf8" />
+              <rect x="-9" y="-4" width="18" height="8" rx="3" fill="#e11d48" />
             </g>
           )}
 
@@ -1389,7 +1380,7 @@ function AnatomicalExerciseAnimator({ exercise }) {
               y1="85"
               x2={pose.wrist.x}
               y2={pose.wrist.y}
-              stroke="#38bdf8"
+              stroke="#f43f5e"
               strokeWidth="2.5"
               strokeDasharray="3 3"
             />
@@ -1397,16 +1388,16 @@ function AnatomicalExerciseAnimator({ exercise }) {
 
           {(exercise.equipment === 'pullup_bar' || exercise.equipment === 'lat_bar') && (
             <g>
-              <line x1="90" y1="18" x2="175" y2="18" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
-              <line x1="132" y1="18" x2={pose.wrist.x} y2={pose.wrist.y} stroke="#38bdf8" strokeWidth="2.5" />
+              <line x1="90" y1="18" x2="175" y2="18" stroke="#a8a29e" strokeWidth="5" strokeLinecap="round" />
+              <line x1="132" y1="18" x2={pose.wrist.x} y2={pose.wrist.y} stroke="#f43f5e" strokeWidth="2.5" />
             </g>
           )}
         </svg>
 
         {/* Etykieta aktualnej fazy ruchu na dole */}
-        <div className="absolute bottom-2 inset-x-2.5 bg-slate-950/90 backdrop-blur-sm border border-slate-800 px-3 py-1.5 rounded-lg flex items-center justify-between">
-          <span className="text-[11px] font-bold text-amber-300">{pose.phaseLabel}</span>
-          <span className="text-[10px] text-rose-400 font-semibold">● Aktywne mięśnie</span>
+        <div className="absolute bottom-2 inset-x-2.5 bg-white/90 backdrop-blur-sm border border-rose-200 px-3 py-1.5 rounded-xl flex items-center justify-between shadow-sm">
+          <span className="text-[11px] font-bold text-rose-700">{pose.phaseLabel}</span>
+          <span className="text-[10px] text-rose-500 font-semibold">● Aktywne partie</span>
         </div>
       </div>
     </div>
@@ -1666,16 +1657,16 @@ export default function App() {
     const rir = prevSet.rir;
 
     let suggestion = null;
-    let badgeColor = 'bg-slate-800 text-slate-300 border-slate-700';
+    let badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
 
     if (!isNaN(w)) {
       if (rir === '3-4' || rir === '5+' || (!isNaN(r) && exercise.targetMaxReps && r >= exercise.targetMaxReps && rir === '2')) {
         const increment = w >= 20 ? 2.5 : 1.5;
         suggestion = `Progresja: spróbuj ${(w + increment).toFixed(1).replace('.0', '')} kg (tydz. temu ${w}kg × ${prevSet.reps || '?'}, RIR ${rir})`;
-        badgeColor = 'bg-emerald-950/70 text-emerald-300 border-emerald-700/60';
+        badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
       } else if (rir === '0') {
         suggestion = `Zostań na ${w} kg i pilnuj RIR 2 (tydz. temu upadek RIR 0)`;
-        badgeColor = 'bg-amber-950/70 text-amber-300 border-amber-700/60';
+        badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
       } else {
         suggestion = `Tydz. ${selectedWeek - 1}: ${w} kg × ${prevSet.reps || '?'} (RIR ${rir})`;
       }
@@ -1811,7 +1802,7 @@ export default function App() {
   const generatePawelReport = () => {
     const workout = WORKOUT_PLAN[selectedWorkout];
     const lines = [
-      `🐻 RAPORT TRENINGOWY – TYDZIEŃ ${selectedWeek}`,
+      `🌸 RAPORT TRENINGOWY – TYDZIEŃ ${selectedWeek}`,
       `📌 ${workout.title}`,
       `────────────────────`
     ];
@@ -1837,7 +1828,7 @@ export default function App() {
     const fLog = finisherLogs[selectedWeek]?.[selectedWorkout];
     lines.push(`────────────────────`);
     lines.push(
-      `🔥 ${workout.finisher.title}: ${
+      `✨ ${workout.finisher.title}: ${
         fLog?.rounds || fLog?.kcalOrTime
           ? `${fLog.rounds ? fLog.rounds + ' rund/obwodów ' : ''}${fLog.kcalOrTime ? '(' + fLog.kcalOrTime + ')' : ''}`
           : 'Wykonano'
@@ -1875,25 +1866,25 @@ export default function App() {
   const progressPercent = Math.round((completedMainSets / totalMainSets) * 100);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-28 font-sans selection:bg-rose-500 selection:text-white">
-      {/* GÓRNY PASEK */}
-      <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+    <div className="min-h-screen bg-[#fffafa] text-stone-800 pb-28 font-sans selection:bg-rose-300 selection:text-rose-950">
+      {/* KOBIECY, JASNY PASEK NAWIGACJI (BLUSH & CREAM) */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-rose-100 shadow-sm px-4 py-3">
         <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
-              <Flame className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shadow-md shadow-rose-200">
+              <Heart className="w-5 h-5 text-white fill-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-bold text-base sm:text-lg tracking-tight text-white">
-                  HYROX PLAN • ASIA
+                <h1 className="font-serif font-bold text-base sm:text-lg tracking-tight text-stone-800">
+                  Asia • Hyrox Studio
                 </h1>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  Trener: Paweł 🐻
+                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200">
+                  Plan od Pawcia 🐻
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Miesiąc 1–2 (8 tygodni) • Cel od 2. tyg: <strong className="text-rose-300">RIR 2 (70-80% max)</strong>
+              <p className="text-xs text-stone-500">
+                Miesiąc 1–2 • Cel od 2. tyg: <strong className="text-rose-600">RIR 2 (2 ruchy w zapasie)</strong>
               </p>
             </div>
           </div>
@@ -1901,10 +1892,10 @@ export default function App() {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setActiveTab('rir_guide')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 border transition ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 border transition ${
                 activeTab === 'rir_guide'
-                  ? 'bg-rose-500 text-white border-rose-400'
-                  : 'bg-slate-900 text-rose-300 border-slate-800 hover:border-rose-500/50'
+                  ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                  : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
               }`}
             >
               <HelpCircle className="w-3.5 h-3.5" />
@@ -1914,10 +1905,10 @@ export default function App() {
             <button
               onClick={toggleWakeLock}
               title="Nie wygaszaj ekranu na treningu"
-              className={`p-2 rounded-lg border text-xs flex items-center gap-1 transition ${
+              className={`p-2 rounded-full border text-xs flex items-center gap-1 transition ${
                 wakeLockActive
-                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-600'
+                  : 'bg-white border-rose-200 text-stone-400 hover:text-rose-500'
               }`}
             >
               <Smartphone className="w-4 h-4" />
@@ -1925,10 +1916,10 @@ export default function App() {
 
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`p-2 rounded-lg border transition ${
+              className={`p-2 rounded-full border transition ${
                 soundEnabled
-                  ? 'bg-slate-900 border-slate-800 text-amber-400'
-                  : 'bg-slate-900 border-slate-800 text-slate-500'
+                  ? 'bg-rose-50 border-rose-200 text-rose-500'
+                  : 'bg-white border-rose-100 text-stone-400'
               }`}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -1936,69 +1927,67 @@ export default function App() {
 
             <button
               onClick={() => setShowBackupModal(true)}
-              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:border-slate-700"
+              className="p-2 rounded-full bg-white border border-rose-200 text-rose-500 hover:bg-rose-50"
             >
-              <ShieldCheck className="w-4 h-4 text-sky-400" />
+              <ShieldCheck className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* WYBÓR TYGODNIA */}
+        {/* WYBÓR TYGODNIA (PASTELOWE PASTYLKI) */}
         <div className="max-w-3xl mx-auto mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((w) => (
             <button
               key={w}
               onClick={() => setSelectedWeek(w)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition flex items-center gap-1 ${
                 selectedWeek === w
-                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/25'
-                  : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm shadow-rose-200'
+                  : 'bg-rose-50/70 text-stone-600 border border-rose-100 hover:bg-rose-100/60'
               }`}
             >
-              <span>Tydz. {w}</span>
-              {w === 1 && <span className="text-[10px] opacity-80">(Wdrożenie)</span>}
-              {w >= 2 && <span className="text-[10px] opacity-85">RIR 2</span>}
+              <span>Tydzień {w}</span>
             </button>
           ))}
         </div>
 
         {/* ZAKŁADKI */}
-        <div className="max-w-3xl mx-auto mt-2.5 grid grid-cols-4 gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+        <div className="max-w-3xl mx-auto mt-2.5 grid grid-cols-4 gap-1.5 bg-rose-50/80 p-1 rounded-2xl border border-rose-100">
           <button
             onClick={() => setActiveTab('workout')}
-            className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-              activeTab === 'workout' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white'
+            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+              activeTab === 'workout' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-rose-600'
             }`}
           >
-            <Dumbbell className="w-3.5 h-3.5 text-rose-400" />
+            <Dumbbell className="w-3.5 h-3.5" />
             <span>Trening</span>
           </button>
           <button
             onClick={() => setActiveTab('videos')}
-            className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-              activeTab === 'videos' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white'
+            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+              activeTab === 'videos' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-rose-600'
             }`}
           >
-            <Film className="w-3.5 h-3.5 text-sky-400" />
-            <span>Moje Wideo ({Object.keys(localVideos).length})</span>
+            <Film className="w-3.5 h-3.5" />
+            <span>Wideo ({Object.keys(localVideos).length})</span>
           </button>
           <button
             onClick={() => setActiveTab('progress')}
-            className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-              activeTab === 'progress' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white'
+            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+              activeTab === 'progress' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-rose-600'
             }`}
           >
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <Trophy className="w-3.5 h-3.5" />
             <span>Progres</span>
           </button>
           <button
             onClick={() => setActiveTab('rir_guide')}
-            className={`py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-              activeTab === 'rir_guide' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white'
+            className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+              activeTab === 'rir_guide' ? 'bg-white text-rose-600 shadow-sm' : 'text-stone-500 hover:text-rose-600'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Instrukcja RIR</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Ściąga RIR</span>
           </button>
         </div>
       </header>
@@ -2006,19 +1995,21 @@ export default function App() {
       <main className="max-w-3xl mx-auto px-4 pt-4">
         {/* ZAKŁADKA RIR */}
         {activeTab === 'rir_guide' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <h2 className="text-lg font-bold text-white">Jak korzystać ze skali RIR na treningu?</h2>
-            <div className="grid gap-2.5 text-xs">
-              <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-700/50">
-                <p className="font-bold text-emerald-300">RIR 2 (Twój cel od 2. tygodnia planu Pawła)</p>
-                <p className="text-slate-300 mt-0.5">
-                  Kończysz serię i czujesz, że przy maksymalnej walce zrobiłabyś jeszcze dokładnie 2 poprawne
-                  powtórzenia, ale 3. już by nie weszło.
+          <div className="bg-white border border-rose-200 rounded-3xl p-5 space-y-4 shadow-sm">
+            <h2 className="text-lg font-serif font-bold text-stone-800">
+              🌸 Jak korzystać ze skali RIR na treningu?
+            </h2>
+            <div className="grid gap-3 text-xs">
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200">
+                <p className="font-bold text-rose-700">🎯 RIR 2 (Twój cel od 2. tygodnia planu Pawła)</p>
+                <p className="text-stone-600 mt-1">
+                  Kończysz serię i czujesz przyjemne zmęczenie mięśni – wiesz, że przy maksymalnej walce zrobiłabyś
+                  jeszcze dokładnie 2 poprawne powtórzenia, ale 3. już by nie weszło.
                 </p>
               </div>
-              <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-700/50">
-                <p className="font-bold text-amber-300">RIR 5+ (Seria rozgrzewkowa)</p>
-                <p className="text-slate-300 mt-0.5">
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+                <p className="font-bold text-amber-800">✨ RIR 5+ (Seria rozgrzewkowa)</p>
+                <p className="text-stone-600 mt-1">
                   Jeśli po ostatnim powtórzeniu czujesz, że zrobisz jeszcze 5 ruchów, seria była zbyt lekka – dołóż
                   ciężaru i nie wliczaj jej do 3 serii roboczych.
                 </p>
@@ -2029,41 +2020,41 @@ export default function App() {
 
         {/* ZAKŁADKA MOJE WIDEO */}
         {activeTab === 'videos' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Film className="w-5 h-5 text-sky-400" />
+          <div className="bg-white border border-rose-200 rounded-3xl p-5 shadow-sm">
+            <h2 className="text-base font-bold text-stone-800 flex items-center gap-2">
+              <Film className="w-5 h-5 text-rose-500" />
               <span>Twoje nagrane filmiki ({Object.keys(localVideos).length})</span>
             </h2>
             {Object.keys(localVideos).length === 0 ? (
-              <div className="text-center py-10 text-slate-500 text-sm">
-                Nie dodałaś jeszcze żadnego filmiku. Przy ćwiczeniu kliknij <strong>+ Mój filmik</strong>.
+              <div className="text-center py-10 text-stone-400 text-sm">
+                Nie dodałaś jeszcze żadnego filmiku. Przy ćwiczeniu kliknij <strong className="text-rose-500">+ Mój filmik</strong>.
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 gap-4 mt-4">
                 {Object.values(localVideos).map((vid) => (
                   <div
                     key={vid.key}
-                    className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col"
+                    className="bg-rose-50/40 border border-rose-200 rounded-2xl overflow-hidden flex flex-col"
                   >
                     <video src={vid.url} controls playsInline className="w-full h-52 object-cover bg-black" />
                     <div className="p-3 flex items-center justify-between gap-2">
                       <div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
                           Tydzień {vid.week}
                         </span>
-                        <h3 className="font-bold text-sm text-white mt-1">{vid.exerciseName}</h3>
+                        <h3 className="font-bold text-sm text-stone-800 mt-1">{vid.exerciseName}</h3>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleShareVideo(vid)}
-                          className="py-1.5 px-2.5 rounded-lg bg-sky-500 text-slate-950 font-bold text-xs flex items-center gap-1"
+                          className="py-1.5 px-3 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-sm"
                         >
                           <Share2 className="w-3.5 h-3.5" />
                           <span>Wyślij</span>
                         </button>
                         <button
                           onClick={() => handleDeleteVideo(vid.key)}
-                          className="p-1.5 rounded-lg bg-slate-900 text-rose-400 border border-slate-800"
+                          className="p-1.5 rounded-full bg-white text-rose-500 border border-rose-200"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -2078,17 +2069,17 @@ export default function App() {
 
         {/* ZAKŁADKA PROGRES */}
         {activeTab === 'progress' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-400" />
-              <span>Progres ciężarów (Tydzień 1 – 8)</span>
+          <div className="bg-white border border-rose-200 rounded-3xl p-5 space-y-4 shadow-sm">
+            <h2 className="text-base font-bold text-stone-800 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-rose-500" />
+              <span>Twój progres ciężarów (Tydzień 1 – 8)</span>
             </h2>
             {[1, 2, 3].map((wId) => (
-              <div key={wId} className="bg-slate-950 border border-slate-800 rounded-xl p-3 overflow-x-auto">
-                <h3 className="text-xs font-bold text-rose-400 uppercase mb-2">{WORKOUT_PLAN[wId].title}</h3>
+              <div key={wId} className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 overflow-x-auto">
+                <h3 className="text-xs font-bold text-rose-600 uppercase mb-2">{WORKOUT_PLAN[wId].title}</h3>
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400">
+                    <tr className="border-b border-rose-200 text-stone-500">
                       <th className="py-1.5 pr-2">Ćwiczenie</th>
                       {[1, 2, 3, 4, 5, 6, 7, 8].map((wk) => (
                         <th key={wk} className="py-1.5 px-1.5 text-center">
@@ -2097,10 +2088,10 @@ export default function App() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-900">
+                  <tbody className="divide-y divide-rose-100">
                     {WORKOUT_PLAN[wId].main.map((ex) => (
                       <tr key={ex.id}>
-                        <td className="py-2 pr-2 font-medium text-slate-200">{ex.name}</td>
+                        <td className="py-2 pr-2 font-medium text-stone-700">{ex.name}</td>
                         {[1, 2, 3, 4, 5, 6, 7, 8].map((wk) => {
                           const l = logs[wk]?.[ex.id];
                           const weights =
@@ -2109,11 +2100,11 @@ export default function App() {
                           return (
                             <td key={wk} className="py-2 px-1.5 text-center">
                               {maxW ? (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">
+                                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">
                                   {maxW}kg
                                 </span>
                               ) : (
-                                <span className="text-slate-600">-</span>
+                                <span className="text-stone-300">-</span>
                               )}
                             </td>
                           );
@@ -2130,7 +2121,8 @@ export default function App() {
         {/* ZAKŁADKA TRENING */}
         {activeTab === 'workout' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">
+            {/* KARTY WYBORU TRENINGU 1 / 2 / 3 */}
+            <div className="grid grid-cols-3 gap-2.5">
               {[1, 2, 3].map((id) => {
                 const w = WORKOUT_PLAN[id];
                 const isSelected = selectedWorkout === id;
@@ -2138,20 +2130,20 @@ export default function App() {
                   <button
                     key={id}
                     onClick={() => setSelectedWorkout(id)}
-                    className={`p-3 rounded-2xl border text-left transition ${
+                    className={`p-3.5 rounded-2xl border text-left transition ${
                       isSelected
-                        ? 'bg-gradient-to-br from-rose-500/20 to-amber-500/10 border-rose-500/60'
-                        : 'bg-slate-900/80 border-slate-800'
+                        ? 'bg-gradient-to-br from-rose-100/90 via-pink-50 to-white border-rose-300 shadow-sm'
+                        : 'bg-white border-rose-100 hover:border-rose-200'
                     }`}
                   >
                     <span
-                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
-                        isSelected ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'
+                      className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
+                        isSelected ? 'bg-rose-500 text-white' : 'bg-rose-50 text-rose-500'
                       }`}
                     >
-                      Trening {id}
+                      Dzień {id}
                     </span>
-                    <p className="font-bold text-xs sm:text-sm text-white mt-2 line-clamp-1">
+                    <p className="font-bold text-xs sm:text-sm text-stone-800 mt-2 line-clamp-1">
                       {w.title.replace(`Trening ${id}: `, '')}
                     </p>
                   </button>
@@ -2159,19 +2151,20 @@ export default function App() {
               })}
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+            {/* PASEK POSTĘPU + RAPORT */}
+            <div className="bg-white border border-rose-200 rounded-3xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
               <div className="flex-1 min-w-[200px]">
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-bold text-white">
+                  <span className="font-serif font-bold text-stone-800">
                     {currentWorkout.title} • Tydzień {selectedWeek}
                   </span>
-                  <span className="text-rose-400 font-bold">
+                  <span className="text-rose-600 font-bold">
                     {completedMainSets}/{totalMainSets} serii ({progressPercent}%)
                   </span>
                 </div>
-                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="w-full h-2.5 bg-rose-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-rose-500 to-amber-400 transition-all duration-300"
+                    className="h-full bg-gradient-to-r from-rose-400 to-pink-500 transition-all duration-300 rounded-full"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
@@ -2179,18 +2172,21 @@ export default function App() {
 
               <button
                 onClick={() => setShowReportModal(true)}
-                className="px-3.5 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs flex items-center gap-1.5"
+                className="px-4 py-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-rose-200"
               >
                 <Copy className="w-3.5 h-3.5" />
-                <span>Raport dla Pawła</span>
+                <span>Raport dla Pawcia</span>
               </button>
             </div>
 
-            {/* MOBILIZACJA */}
+            {/* MOBILIZACJA (ROZGRZEWKA) */}
             <section className="space-y-2.5">
-              <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-400 px-1">
-                🔥 Mobilizacja (Rozgrzewka)
-              </h2>
+              <div className="px-3 py-2 rounded-xl bg-rose-100/70 border border-rose-200/70 flex items-center justify-between">
+                <h2 className="text-xs font-serif font-bold uppercase tracking-wider text-rose-800">
+                  🌸 Mobilizacja (Rozgrzewka)
+                </h2>
+                <span className="text-[11px] text-rose-600 font-medium">Płynne, spokojne ruchy</span>
+              </div>
 
               {currentWorkout.warmup.map((ex) => {
                 const exLog = getExerciseLog(selectedWeek, ex);
@@ -2199,18 +2195,21 @@ export default function App() {
                 const uploadedVideo = localVideos[videoKey];
 
                 return (
-                  <div key={ex.id} className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-3">
+                  <div
+                    key={ex.id}
+                    className="bg-white border border-rose-100 rounded-3xl p-4 space-y-3 shadow-sm"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <h3 className="font-bold text-sm text-white">{ex.name}</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Serie: <strong className="text-slate-200">{ex.sets}</strong> • Powtórzenia:{' '}
-                          <strong className="text-amber-300">{ex.reps}</strong> • {ex.notes}
+                        <h3 className="font-bold text-sm text-stone-800">{ex.name}</h3>
+                        <p className="text-xs text-stone-500 mt-0.5">
+                          Serie: <strong className="text-stone-700">{ex.sets}</strong> • Powtórzenia:{' '}
+                          <strong className="text-rose-600">{ex.reps}</strong> • {ex.notes}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <label className="cursor-pointer px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-semibold flex items-center gap-1 border border-slate-700">
+                        <label className="cursor-pointer px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold flex items-center gap-1 border border-rose-200">
                           <Video className="w-3.5 h-3.5" />
                           <span>+ Filmik</span>
                           <input
@@ -2223,10 +2222,10 @@ export default function App() {
 
                         <button
                           onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border transition ${
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 border transition ${
                             isDemoOpen
-                              ? 'bg-amber-500 text-slate-950 border-amber-400'
-                              : 'bg-slate-800 text-slate-200 border-slate-700'
+                              ? 'bg-rose-500 text-white border-rose-500'
+                              : 'bg-white text-stone-600 border-rose-200 hover:bg-rose-50'
                           }`}
                         >
                           <Activity className="w-3.5 h-3.5" />
@@ -2241,10 +2240,10 @@ export default function App() {
                         <button
                           key={idx}
                           onClick={() => handleToggleSetDone(ex, idx)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition ${
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border transition ${
                             s.done
-                              ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300'
-                              : 'bg-slate-950 border-slate-800 text-slate-400'
+                              ? 'bg-rose-500 border-rose-500 text-white shadow-sm'
+                              : 'bg-rose-50/50 border-rose-200 text-stone-600 hover:bg-rose-100/50'
                           }`}
                         >
                           <Check className="w-3.5 h-3.5" />
@@ -2256,30 +2255,30 @@ export default function App() {
                     </div>
 
                     {isDemoOpen && (
-                      <div className="pt-3 border-t border-slate-800 grid sm:grid-cols-2 gap-3">
+                      <div className="pt-3 border-t border-rose-100 grid sm:grid-cols-2 gap-3">
                         <AnatomicalExerciseAnimator exercise={ex} />
-                        <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col justify-between space-y-2">
+                        <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 flex flex-col justify-between space-y-2">
                           <div>
-                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700">
                               {ex.muscles}
                             </span>
-                            <ul className="mt-2 space-y-1.5 text-xs text-slate-300 list-disc pl-4">
+                            <ul className="mt-2.5 space-y-1.5 text-xs text-stone-600 list-disc pl-4">
                               {ex.cues.map((c, i) => (
                                 <li key={i}>{c}</li>
                               ))}
                             </ul>
                           </div>
                           {uploadedVideo && (
-                            <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                            <div className="pt-2 border-t border-rose-200/60 space-y-1.5">
                               <video
                                 src={uploadedVideo.url}
                                 controls
                                 playsInline
-                                className="w-full h-36 object-cover rounded-lg bg-black"
+                                className="w-full h-36 object-cover rounded-xl bg-black"
                               />
                               <button
                                 onClick={() => handleShareVideo(uploadedVideo)}
-                                className="w-full py-1.5 rounded-lg bg-sky-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1"
+                                className="w-full py-1.5 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-1"
                               >
                                 <Share2 className="w-3.5 h-3.5" />
                                 <span>Wyślij Pawłowi</span>
@@ -2296,9 +2295,12 @@ export default function App() {
 
             {/* CZĘŚĆ GŁÓWNA */}
             <section className="space-y-3 pt-2">
-              <h2 className="text-xs font-extrabold uppercase tracking-wider text-rose-400 px-1">
-                💪 Część Główna (Siła i Kontrola • Cel RIR 2)
-              </h2>
+              <div className="px-3 py-2 rounded-xl bg-rose-100/70 border border-rose-200/70 flex items-center justify-between">
+                <h2 className="text-xs font-serif font-bold uppercase tracking-wider text-rose-800">
+                  ✨ Część Główna (Cel: RIR 2)
+                </h2>
+                <span className="text-[11px] text-rose-600 font-medium">Zapis ciężarów i stoper przerw</span>
+              </div>
 
               {currentWorkout.main.map((ex) => {
                 const exLog = getExerciseLog(selectedWeek, ex);
@@ -2310,26 +2312,26 @@ export default function App() {
                 return (
                   <div
                     key={ex.id}
-                    className={`bg-slate-900 border rounded-2xl p-4 space-y-3.5 ${
-                      ex.superset ? 'border-amber-500/40' : 'border-slate-800'
+                    className={`bg-white border rounded-3xl p-4 space-y-3.5 shadow-sm ${
+                      ex.superset ? 'border-pink-300 ring-1 ring-pink-100' : 'border-rose-100'
                     }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-base text-white">{ex.name}</h3>
+                          <h3 className="font-bold text-base text-stone-800">{ex.name}</h3>
                           {ex.superset && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                              ⚡ {ex.superset}
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">
+                              ✨ {ex.superset}
                             </span>
                           )}
                           {ex.unilateral && (
                             <button
                               onClick={() => updateExerciseLog(ex, (c) => ({ ...c, splitLR: !c.splitLR }))}
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition ${
                                 exLog.splitLR
-                                  ? 'bg-sky-500 text-slate-950 border-sky-400'
-                                  : 'bg-slate-800 text-sky-300 border-slate-700'
+                                  ? 'bg-rose-500 text-white border-rose-500'
+                                  : 'bg-rose-50 text-rose-600 border-rose-200'
                               }`}
                             >
                               {exLog.splitLR ? '✓ Osobno L / P' : '⇄ Podziel L / P'}
@@ -2338,22 +2340,22 @@ export default function App() {
                           {ex.barbell && (
                             <button
                               onClick={() => setOpenPlateCalc((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                              className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 text-amber-300 border border-slate-700 flex items-center gap-1"
+                              className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1"
                             >
                               <Scale className="w-3 h-3" />
                               <span>Talerze</span>
                             </button>
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Serie: <strong className="text-white">{ex.sets}</strong> • Zakres:{' '}
-                          <strong className="text-rose-400">{ex.reps}</strong> • Przerwa:{' '}
-                          <strong className="text-amber-300">{ex.rest}s</strong> • {ex.notes}
+                        <p className="text-xs text-stone-500 mt-1">
+                          Serie: <strong className="text-stone-800">{ex.sets}</strong> • Powtórzenia:{' '}
+                          <strong className="text-rose-600">{ex.reps}</strong> • Przerwa:{' '}
+                          <strong className="text-pink-600">{ex.rest}s</strong> • {ex.notes}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <label className="cursor-pointer px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 text-xs font-semibold flex items-center gap-1 border border-slate-700">
+                        <label className="cursor-pointer px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold flex items-center gap-1 border border-rose-200">
                           <Video className="w-3.5 h-3.5" />
                           <span>{uploadedVideo ? 'Zmień filmik' : '+ Mój filmik'}</span>
                           <input
@@ -2366,10 +2368,10 @@ export default function App() {
 
                         <button
                           onClick={() => setOpenDemos((prev) => ({ ...prev, [ex.id]: !prev[ex.id] }))}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 border transition ${
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 border transition ${
                             isDemoOpen
-                              ? 'bg-rose-500 text-white border-rose-400'
-                              : 'bg-slate-800 text-slate-200 border-slate-700'
+                              ? 'bg-rose-500 text-white border-rose-500'
+                              : 'bg-white text-stone-600 border-rose-200 hover:bg-rose-50'
                           }`}
                         >
                           <Activity className="w-3.5 h-3.5" />
@@ -2380,16 +2382,18 @@ export default function App() {
                     </div>
 
                     {ex.barbell && isPlateOpen && (
-                      <div className="p-3 rounded-xl bg-slate-950 border border-amber-500/30 space-y-2 text-xs">
+                      <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-amber-300">Talerze na jedną stronę gryfu:</span>
+                          <span className="font-bold text-amber-800">Talerze na jedną stronę sztangi:</span>
                           <div className="flex items-center gap-1">
                             {[20, 15, 10].map((bw) => (
                               <button
                                 key={bw}
                                 onClick={() => updateExerciseLog(ex, (c) => ({ ...c, barWeight: bw }))}
-                                className={`px-2 py-0.5 rounded font-bold ${
-                                  exLog.barWeight === bw ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                                className={`px-2.5 py-0.5 rounded-full font-bold ${
+                                  exLog.barWeight === bw
+                                    ? 'bg-amber-500 text-white'
+                                    : 'bg-white text-stone-500 border border-amber-200'
                                 }`}
                               >
                                 Gryf {bw}kg
@@ -2400,20 +2404,20 @@ export default function App() {
                         {exLog.sets.map((s, idx) => {
                           const plates = calculatePlates(s.weight, exLog.barWeight);
                           return (
-                            <div key={idx} className="flex items-center justify-between text-slate-300">
+                            <div key={idx} className="flex items-center justify-between text-stone-600">
                               <span>Seria {idx + 1} ({s.weight || 0} kg):</span>
                               <div className="flex items-center gap-1">
                                 {plates.length > 0 ? (
                                   plates.map((p, pIdx) => (
                                     <span
                                       key={pIdx}
-                                      className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-200 font-bold"
+                                      className="px-2 py-0.5 rounded-full bg-white border border-amber-300 text-amber-800 font-bold"
                                     >
                                       +{p}kg
                                     </span>
                                   ))
                                 ) : (
-                                  <span className="text-slate-500">Sam gryf</span>
+                                  <span className="text-stone-400">Sam gryf</span>
                                 )}
                               </div>
                             </div>
@@ -2422,7 +2426,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* SERIE */}
+                    {/* SERIE ROBOCZE */}
                     <div className="space-y-2">
                       {exLog.sets.map((s, idx) => {
                         const advice = getPreviousWeekAdvice(ex, idx);
@@ -2431,53 +2435,57 @@ export default function App() {
                         return (
                           <div
                             key={idx}
-                            className={`p-2.5 rounded-xl border space-y-2 ${
+                            className={`p-3 rounded-2xl border transition space-y-2 ${
                               isTooLightWarmup
-                                ? 'bg-amber-950/30 border-amber-600/50'
+                                ? 'bg-amber-50/70 border-amber-300'
                                 : s.done
-                                ? 'bg-emerald-950/30 border-emerald-600/40'
-                                : 'bg-slate-950 border-slate-800/90'
+                                ? 'bg-rose-50/80 border-rose-300'
+                                : 'bg-[#fffcfc] border-rose-100'
                             }`}
                           >
                             {advice && (
                               <span
-                                className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded border ${advice.badgeColor}`}
+                                className={`inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${advice.badgeColor}`}
                               >
                                 💡 {advice.text}
                               </span>
                             )}
 
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                              <span className="w-8 text-xs font-extrabold text-slate-400">#{idx + 1}</span>
+                              <span className="w-7 text-xs font-bold text-rose-400">#{idx + 1}</span>
 
                               {!exLog.splitLR ? (
                                 <>
                                   <div className="flex-1 min-w-[85px]">
-                                    <label className="text-[10px] text-slate-400 block">Ciężar (kg)</label>
+                                    <label className="text-[10px] text-stone-400 font-medium block">
+                                      Ciężar (kg)
+                                    </label>
                                     <input
                                       type="number"
                                       step="0.5"
                                       placeholder={advice?.prevWeight || 'kg'}
                                       value={s.weight}
                                       onChange={(e) => handleSetChange(ex, idx, 'weight', e.target.value)}
-                                      className="w-full mt-0.5 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-sm font-bold text-white"
+                                      className="w-full mt-0.5 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-sm font-bold text-stone-800 focus:border-rose-400 outline-none"
                                     />
                                   </div>
                                   <div className="flex-1 min-w-[85px]">
-                                    <label className="text-[10px] text-slate-400 block">Powt. ({ex.reps})</label>
+                                    <label className="text-[10px] text-stone-400 font-medium block">
+                                      Powt. ({ex.reps})
+                                    </label>
                                     <input
                                       type="text"
                                       placeholder={ex.reps}
                                       value={s.reps}
                                       onChange={(e) => handleSetChange(ex, idx, 'reps', e.target.value)}
-                                      className="w-full mt-0.5 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-sm font-bold text-white"
+                                      className="w-full mt-0.5 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-sm font-bold text-stone-800 focus:border-rose-400 outline-none"
                                     />
                                   </div>
                                 </>
                               ) : (
                                 <div className="flex-1 grid grid-cols-2 gap-2">
-                                  <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
-                                    <span className="text-[10px] font-bold text-sky-400 block">LEWA</span>
+                                  <div className="p-2 rounded-xl bg-white border border-rose-100">
+                                    <span className="text-[10px] font-bold text-rose-500 block">LEWA</span>
                                     <div className="flex gap-1 mt-1">
                                       <input
                                         type="number"
@@ -2485,19 +2493,19 @@ export default function App() {
                                         placeholder="kg"
                                         value={s.weight}
                                         onChange={(e) => handleSetChange(ex, idx, 'weight', e.target.value)}
-                                        className="w-1/2 px-2 py-1 rounded bg-slate-950 border border-slate-700 text-xs font-bold text-white"
+                                        className="w-1/2 px-2 py-1 rounded-lg bg-rose-50/40 border border-rose-200 text-xs font-bold text-stone-800"
                                       />
                                       <input
                                         type="text"
                                         placeholder="powt"
                                         value={s.reps}
                                         onChange={(e) => handleSetChange(ex, idx, 'reps', e.target.value)}
-                                        className="w-1/2 px-2 py-1 rounded bg-slate-950 border border-slate-700 text-xs font-bold text-white"
+                                        className="w-1/2 px-2 py-1 rounded-lg bg-rose-50/40 border border-rose-200 text-xs font-bold text-stone-800"
                                       />
                                     </div>
                                   </div>
-                                  <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
-                                    <span className="text-[10px] font-bold text-rose-400 block">PRAWA</span>
+                                  <div className="p-2 rounded-xl bg-white border border-rose-100">
+                                    <span className="text-[10px] font-bold text-pink-500 block">PRAWA</span>
                                     <div className="flex gap-1 mt-1">
                                       <input
                                         type="number"
@@ -2505,14 +2513,14 @@ export default function App() {
                                         placeholder="kg"
                                         value={s.weightRight}
                                         onChange={(e) => handleSetChange(ex, idx, 'weightRight', e.target.value)}
-                                        className="w-1/2 px-2 py-1 rounded bg-slate-950 border border-slate-700 text-xs font-bold text-white"
+                                        className="w-1/2 px-2 py-1 rounded-lg bg-rose-50/40 border border-rose-200 text-xs font-bold text-stone-800"
                                       />
                                       <input
                                         type="text"
                                         placeholder="powt"
                                         value={s.repsRight}
                                         onChange={(e) => handleSetChange(ex, idx, 'repsRight', e.target.value)}
-                                        className="w-1/2 px-2 py-1 rounded bg-slate-950 border border-slate-700 text-xs font-bold text-white"
+                                        className="w-1/2 px-2 py-1 rounded-lg bg-rose-50/40 border border-rose-200 text-xs font-bold text-stone-800"
                                       />
                                     </div>
                                   </div>
@@ -2520,16 +2528,16 @@ export default function App() {
                               )}
 
                               <div className="w-32">
-                                <label className="text-[10px] text-slate-400 block">Zapas (RIR)</label>
+                                <label className="text-[10px] text-stone-400 font-medium block">Zapas (RIR)</label>
                                 <select
                                   value={s.rir}
                                   onChange={(e) => handleSetChange(ex, idx, 'rir', e.target.value)}
-                                  className={`w-full mt-0.5 px-2 py-1.5 rounded-lg border text-xs font-bold ${
+                                  className={`w-full mt-0.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold outline-none ${
                                     s.rir === '2'
-                                      ? 'bg-emerald-950/60 border-emerald-600/60 text-emerald-300'
+                                      ? 'bg-rose-50 border-rose-300 text-rose-700'
                                       : s.rir === '5+'
-                                      ? 'bg-amber-950/70 border-amber-500 text-amber-300'
-                                      : 'bg-slate-900 border-slate-700 text-slate-200'
+                                      ? 'bg-amber-50 border-amber-300 text-amber-800'
+                                      : 'bg-white border-rose-200 text-stone-700'
                                   }`}
                                 >
                                   <option value="2">RIR 2 (Cel 🎯)</option>
@@ -2542,23 +2550,23 @@ export default function App() {
 
                               <button
                                 onClick={() => handleToggleSetDone(ex, idx)}
-                                className={`mt-4 px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 ${
+                                className={`mt-4 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 transition ${
                                   s.done
-                                    ? 'bg-emerald-500 text-slate-950'
-                                    : 'bg-slate-800 hover:bg-rose-500 text-slate-200 hover:text-white'
+                                    ? 'bg-rose-500 text-white shadow-sm shadow-rose-200'
+                                    : 'bg-rose-100 hover:bg-rose-500 text-rose-700 hover:text-white'
                                 }`}
                               >
                                 <Check className="w-4 h-4" />
-                                <span>{s.done ? 'Zrobione' : 'Zrób'}</span>
+                                <span>{s.done ? 'Gotowe' : 'Zrób'}</span>
                               </button>
                             </div>
 
                             {isTooLightWarmup && (
-                              <div className="flex items-center gap-2 text-[11px] text-amber-300 bg-amber-950/60 px-2.5 py-1.5 rounded-lg border border-amber-700/50">
-                                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                              <div className="flex items-center gap-2 text-[11px] text-amber-800 bg-amber-100/70 px-3 py-1.5 rounded-xl border border-amber-300">
+                                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
                                 <span>
-                                  <strong>Zasada Pawła:</strong> Zapas 5+ powtórzeń oznacza serię rozgrzewkową – dołóż
-                                  ciężaru!
+                                  <strong>Wskazówka Pawła:</strong> Przy zapasie 5+ powtórzeń seria jest rozgrzewkowa –
+                                  dołóż obciążenia!
                                 </span>
                               </div>
                             )}
@@ -2569,23 +2577,22 @@ export default function App() {
 
                     <input
                       type="text"
-                      placeholder="Notatka dla siebie lub Pawła..."
+                      placeholder="Twoja notatka do ćwiczenia..."
                       value={exLog.note}
                       onChange={(e) => updateExerciseLog(ex, (c) => ({ ...c, note: e.target.value }))}
-                      className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200"
+                      className="w-full px-3.5 py-2 rounded-2xl bg-rose-50/40 border border-rose-100 text-xs text-stone-700 placeholder:text-stone-400 outline-none focus:border-rose-300"
                     />
 
-                    {/* PANEL ANIMACJA + TWOJE WIDEO */}
                     {isDemoOpen && (
-                      <div className="pt-3 border-t border-slate-800 grid sm:grid-cols-2 gap-3">
+                      <div className="pt-3 border-t border-rose-100 grid sm:grid-cols-2 gap-3">
                         <AnatomicalExerciseAnimator exercise={ex} />
 
-                        <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
+                        <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-3.5 flex flex-col justify-between space-y-3">
                           <div>
-                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">
-                              Pracujące mięśnie: {ex.muscles}
+                            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                              Aktywne partie: {ex.muscles}
                             </span>
-                            <ul className="mt-2.5 space-y-1.5 text-xs text-slate-300 list-disc pl-4">
+                            <ul className="mt-2.5 space-y-1.5 text-xs text-stone-600 list-disc pl-4">
                               {ex.cues.map((c, i) => (
                                 <li key={i}>{c}</li>
                               ))}
@@ -2593,14 +2600,14 @@ export default function App() {
                           </div>
 
                           {uploadedVideo ? (
-                            <div className="pt-2 border-t border-slate-800 space-y-2">
+                            <div className="pt-2 border-t border-rose-200/60 space-y-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-bold text-emerald-400">
+                                <span className="text-[11px] font-bold text-rose-600">
                                   🎥 Twoje nagranie z tego tygodnia
                                 </span>
                                 <button
                                   onClick={() => handleDeleteVideo(videoKey)}
-                                  className="text-[11px] text-rose-400 hover:underline"
+                                  className="text-[11px] text-stone-400 hover:text-rose-600 underline"
                                 >
                                   Usuń
                                 </button>
@@ -2609,18 +2616,18 @@ export default function App() {
                                 src={uploadedVideo.url}
                                 controls
                                 playsInline
-                                className="w-full h-40 object-cover rounded-lg bg-black"
+                                className="w-full h-40 object-cover rounded-xl bg-black"
                               />
                               <button
                                 onClick={() => handleShareVideo(uploadedVideo)}
-                                className="w-full py-2 rounded-lg bg-sky-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
+                                className="w-full py-2 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
                               >
                                 <Share2 className="w-3.5 h-3.5" />
                                 <span>Wyślij / Udostępnij Pawłowi</span>
                               </button>
                             </div>
                           ) : (
-                            <label className="cursor-pointer py-2.5 px-3 rounded-xl border border-dashed border-sky-500/40 bg-sky-500/5 hover:bg-sky-500/10 text-sky-300 text-xs font-semibold flex items-center justify-center gap-2">
+                            <label className="cursor-pointer py-2.5 px-3 rounded-2xl border border-dashed border-rose-300 bg-white hover:bg-rose-50 text-rose-600 text-xs font-semibold flex items-center justify-center gap-2 transition">
                               <Upload className="w-4 h-4" />
                               <span>+ Nagraj lub dodaj swój filmik z galerii</span>
                               <input
@@ -2641,13 +2648,15 @@ export default function App() {
 
             {/* FINISHER */}
             <section className="pt-2">
-              <div className="bg-gradient-to-br from-rose-950/60 via-slate-900 to-amber-950/40 border border-rose-500/40 rounded-2xl p-4 space-y-3">
+              <div className="bg-gradient-to-br from-rose-100/80 via-pink-50/70 to-amber-50/50 border border-rose-200 rounded-3xl p-5 space-y-3 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-rose-500 text-white">
+                    <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-rose-500 text-white">
                       FINISHER HYROX
                     </span>
-                    <h3 className="text-base font-bold text-white mt-1">{currentWorkout.finisher.title}</h3>
+                    <h3 className="text-base font-serif font-bold text-stone-800 mt-1">
+                      {currentWorkout.finisher.title}
+                    </h3>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -2661,7 +2670,7 @@ export default function App() {
                             totalSeconds: 300
                           })
                         }
-                        className="px-3.5 py-2 rounded-xl bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5"
+                        className="px-4 py-2 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
                       >
                         {finisherTimer.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                         <span>{finisherTimer.active ? 'Pauza EMOM' : 'Start EMOM 5:00'}</span>
@@ -2678,7 +2687,7 @@ export default function App() {
                             totalSeconds: 360
                           })
                         }
-                        className="px-3.5 py-2 rounded-xl bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5"
+                        className="px-4 py-2 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
                       >
                         {finisherTimer.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                         <span>{finisherTimer.active ? 'Pauza AMRAP' : 'Start AMRAP 6:00'}</span>
@@ -2695,7 +2704,7 @@ export default function App() {
                             label: 'Przerwa między Obwodami (120s)'
                           })
                         }
-                        className="px-3.5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1.5"
+                        className="px-4 py-2 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
                       >
                         <Play className="w-4 h-4" />
                         <span>Stoper przerwy 120s</span>
@@ -2704,12 +2713,12 @@ export default function App() {
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-300">{currentWorkout.finisher.description}</p>
+                <p className="text-xs text-stone-600">{currentWorkout.finisher.description}</p>
 
-                <ul className="space-y-1.5 text-xs text-white font-semibold bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                <ul className="space-y-1.5 text-xs text-stone-700 font-semibold bg-white/80 p-3.5 rounded-2xl border border-rose-100">
                   {currentWorkout.finisher.tasks.map((t, i) => (
                     <li key={i} className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-300 flex items-center justify-center text-[11px] font-bold">
+                      <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[11px] font-bold">
                         {i + 1}
                       </span>
                       <span>{t}</span>
@@ -2718,19 +2727,19 @@ export default function App() {
                 </ul>
 
                 {(finisherTimer.active || finisherTimer.seconds > 0) && (
-                  <div className="p-3 rounded-xl bg-slate-950 border border-rose-500/50 flex items-center justify-between">
+                  <div className="p-3.5 rounded-2xl bg-white border border-rose-300 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-rose-400">
+                      <span className="text-[10px] font-bold uppercase text-rose-500">
                         {finisherTimer.mode} • Runda {Math.floor(finisherTimer.seconds / 60) + 1}
                       </span>
-                      <p className="text-2xl font-black text-white font-mono">
+                      <p className="text-2xl font-black text-stone-800 font-mono">
                         {String(Math.floor((finisherTimer.totalSeconds - finisherTimer.seconds) / 60)).padStart(2, '0')}:
                         {String((finisherTimer.totalSeconds - finisherTimer.seconds) % 60).padStart(2, '0')}
                       </p>
                     </div>
                     <button
                       onClick={() => setFinisherTimer({ active: false, seconds: 0, mode: 'EMOM', totalSeconds: 300 })}
-                      className="p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-white"
+                      className="p-2 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100"
                     >
                       <RotateCcw className="w-4 h-4" />
                     </button>
@@ -2743,19 +2752,21 @@ export default function App() {
                     placeholder="Wynik (np. 4 rundy / 5x4 kcal)"
                     value={currentFinisherLog.rounds}
                     onChange={(e) => updateFinisherLog('rounds', e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white"
+                    className="px-3.5 py-2 rounded-full bg-white border border-rose-200 text-xs text-stone-700 outline-none"
                   />
                   <input
                     type="text"
                     placeholder="Czas / obciążenie"
                     value={currentFinisherLog.kcalOrTime}
                     onChange={(e) => updateFinisherLog('kcalOrTime', e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white"
+                    className="px-3.5 py-2 rounded-full bg-white border border-rose-200 text-xs text-stone-700 outline-none"
                   />
                   <button
                     onClick={() => updateFinisherLog('completed', !currentFinisherLog.completed)}
-                    className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 ${
-                      currentFinisherLog.completed ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-300'
+                    className={`px-4 py-2 rounded-full font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+                      currentFinisherLog.completed
+                        ? 'bg-rose-500 text-white shadow-sm'
+                        : 'bg-white text-rose-600 border border-rose-200 hover:bg-rose-50'
                     }`}
                   >
                     <CheckCircle2 className="w-4 h-4" />
@@ -2770,29 +2781,31 @@ export default function App() {
 
       {/* PŁYWAJĄCY STOPER PRZERWY */}
       {restTimer.active && (
-        <div className="fixed bottom-4 inset-x-4 max-w-md mx-auto z-40 bg-slate-900/95 backdrop-blur-md border-2 border-rose-500 rounded-2xl p-3.5 shadow-2xl flex items-center justify-between gap-3">
+        <div className="fixed bottom-4 inset-x-4 max-w-md mx-auto z-40 bg-white/95 backdrop-blur-md border-2 border-rose-400 rounded-3xl p-4 shadow-xl flex items-center justify-between gap-3">
           <div>
-            <span className="text-[10px] font-bold uppercase text-rose-400 block">Przerwa • {restTimer.label}</span>
-            <span className="text-2xl font-black font-mono text-white">
+            <span className="text-[10px] font-bold uppercase text-rose-500 block">
+              Przerwa • {restTimer.label}
+            </span>
+            <span className="text-2xl font-black font-mono text-stone-800">
               {Math.floor(restTimer.remaining / 60)}:{String(restTimer.remaining % 60).padStart(2, '0')}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setRestTimer((prev) => ({ ...prev, remaining: Math.max(0, prev.remaining - 15) }))}
-              className="px-2.5 py-1.5 rounded-lg bg-slate-800 text-xs font-bold text-slate-300"
+              className="px-2.5 py-1.5 rounded-full bg-rose-50 text-xs font-bold text-rose-700 border border-rose-200"
             >
               -15s
             </button>
             <button
               onClick={() => setRestTimer((prev) => ({ ...prev, remaining: prev.remaining + 15 }))}
-              className="px-2.5 py-1.5 rounded-lg bg-slate-800 text-xs font-bold text-slate-300"
+              className="px-2.5 py-1.5 rounded-full bg-rose-50 text-xs font-bold text-rose-700 border border-rose-200"
             >
               +15s
             </button>
             <button
               onClick={() => setRestTimer({ active: false, remaining: 0, total: 0, label: '' })}
-              className="px-3 py-1.5 rounded-lg bg-rose-500 text-white text-xs font-bold"
+              className="px-3.5 py-1.5 rounded-full bg-rose-500 text-white text-xs font-bold"
             >
               Pomiń
             </button>
@@ -2802,15 +2815,15 @@ export default function App() {
 
       {/* MODAL RAPORTU */}
       {showReportModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 space-y-4">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-rose-200 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-xl">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-base text-white">Gotowy raport dla Pawła 🐻</h3>
-              <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-white text-sm">
+              <h3 className="font-serif font-bold text-base text-stone-800">Gotowy raport dla Pawcia 🐻</h3>
+              <button onClick={() => setShowReportModal(false)} className="text-stone-400 hover:text-stone-700 text-sm">
                 ✕
               </button>
             </div>
-            <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 whitespace-pre-wrap font-mono max-h-80 overflow-y-auto">
+            <pre className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-100 text-xs text-stone-700 whitespace-pre-wrap font-mono max-h-80 overflow-y-auto">
               {generatePawelReport()}
             </pre>
             <button
@@ -2819,10 +2832,10 @@ export default function App() {
                 setCopiedReport(true);
                 setTimeout(() => setCopiedReport(false), 2500);
               }}
-              className="w-full py-2.5 rounded-xl bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
             >
               <Copy className="w-4 h-4" />
-              <span>{copiedReport ? 'Skopiowano!' : 'Kopiuj raport do schowka'}</span>
+              <span>{copiedReport ? 'Skopiowano do schowka!' : 'Kopiuj raport dla Pawła'}</span>
             </button>
           </div>
         </div>
@@ -2830,26 +2843,26 @@ export default function App() {
 
       {/* MODAL KOPII ZAPASOWEJ */}
       {showBackupModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 space-y-4">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-rose-200 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-xl">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-base text-white flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-sky-400" />
+              <h3 className="font-serif font-bold text-base text-stone-800 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-rose-500" />
                 <span>Kopia zapasowa treningów</span>
               </h3>
-              <button onClick={() => setShowBackupModal(false)} className="text-slate-400 hover:text-white text-sm">
+              <button onClick={() => setShowBackupModal(false)} className="text-stone-400 hover:text-stone-700 text-sm">
                 ✕
               </button>
             </div>
             <div className="grid gap-2.5">
               <button
                 onClick={handleExportBackup}
-                className="w-full py-2.5 px-4 rounded-xl bg-sky-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-full bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
               >
                 <Download className="w-4 h-4" />
                 <span>Pobierz kopię zapasową (.json)</span>
               </button>
-              <label className="cursor-pointer w-full py-2.5 px-4 rounded-xl bg-slate-800 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border border-slate-700">
+              <label className="cursor-pointer w-full py-2.5 px-4 rounded-full bg-rose-50 text-rose-700 font-bold text-xs flex items-center justify-center gap-2 border border-rose-200">
                 <Upload className="w-4 h-4" />
                 <span>Wczytaj kopię zapasową z pliku</span>
                 <input type="file" accept="application/json" className="hidden" onChange={handleImportBackup} />
